@@ -1,28 +1,45 @@
 name: Collect Proxies
 on:
   schedule:
-    - cron: '0 * * * *' # Запуск каждый час
-  workflow_dispatch: # Позволяет запустить вручную
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Добавляем права на запись прямо в код, на случай если в настройках что-то не нажалось
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Обновили версию до актуальной
 
       - name: Collect all proxies
         run: |
+          # Проверяем, на месте ли файл
+          if [ ! -f links.txt ]; then
+            echo "Ошибка: файл links.txt не найден в корне репозитория!"
+            ls -R
+            exit 1
+          fi
+          
           rm -f all_proxies.txt
-          while IFS= read -r url; do
-            curl -sL "$url" >> all_proxies.txt
+          touch all_proxies.txt
+          
+          # Читаем файл links.txt и скачиваем содержимое
+          while IFS= read -r url || [ -n "$url" ]; do
+            # Пропускаем пустые строки
+            [[ -z "$url" ]] && continue
+            echo "Скачиваю: $url"
+            curl -sL --max-time 10 "$url" >> all_proxies.txt
             echo "" >> all_proxies.txt
           done < links.txt
 
       - name: Commit and Push
         run: |
-          git config --global user.name "Robot"
-          git config --global user.email "robot@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all_proxies.txt
-          git commit -m "Update proxies" || exit 0
+          git commit -m "Update proxies $(date)" || exit 0
           git push
