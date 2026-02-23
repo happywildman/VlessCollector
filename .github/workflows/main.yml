@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Collect and Filter Vless
+      - name: Collect and Strict Clean Vless
         run: |
           set -e
 
@@ -28,10 +28,8 @@ jobs:
 
           rm -f all_proxies.yaml temp.txt
 
-          # Заголовок YAML
           echo "proxies:" > all_proxies.yaml
 
-          # Скачивание всех ссылок
           while IFS= read -r url || [ -n "$url" ]; do
             clean_url=$(echo "$url" | tr -d '\r' | xargs)
             [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
@@ -39,13 +37,15 @@ jobs:
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          # Разделение слипшихся ссылок
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Строгая фильтрация: только валидные VLESS
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
+            | grep -v "127.0.0.1" \
+            | grep -v "🔒" \
+            | grep -v " " \
+            | awk 'length($0) > 40 && length($0) < 1200' \
             | sort -u \
             | head -n 30000 \
             | sed 's/^/  - /' >> all_proxies.yaml
