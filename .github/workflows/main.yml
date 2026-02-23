@@ -1,23 +1,54 @@
-name: Subconverter Filter
-
+name: Collect and Filter Vless
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Ручной запуск
+  schedule:
+    - cron: '0 */6 * * *' # Запуск каждые 6 часов
 
 jobs:
-  filter_vless_reality:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Проверяем исходный файл
+      - name: Install Subconverter
         run: |
-          echo "Используем файл: VlessLinks.txt"
-          grep -iE 'vless://|reality://' VlessLinks.txt > raw_filtered.txt
-          echo "Фильтрация завершена. Результат в raw_filtered.txt"
+          wget https://github.com
+          tar -xzf subconverter_linux64.tar.gz
 
-      - name: Вывод первых 10 строк для проверки
+      - name: Prepare Config
         run: |
-          echo "Проверяем результат:"
-          head raw_filtered.txt
+          # Создаем список ваших источников (подписок)
+          # Замените ссылки ниже на ваши реальные источники
+          echo "https://raw.githubusercontent.com" > raw_links.txt
+          
+          # Генерируем конфигурацию для subconverter
+          cat <<EOF > generate.ini
+          [common]
+          target=clash
+          action=generate
+          config_path=pref.ini
+          # Ссылка на ваш файл со списком подписок
+          url=VlessLinks.txt
+          # Фильтр: оставляем только vless и reality
+          include=vless|reality
+          # Исключаем ненужное (например, если в названии есть реклама)
+          exclude=реклама|купите
+          EOF
+
+      - name: Run Subconverter
+        run: |
+          # Собираем все ссылки из вашего исходного файла VlessLinks.txt
+          # и прогоняем через конвертер
+          ./subconverter/subconverter -g & 
+          sleep 5
+          # Запрос к локальному конвертеру для генерации clash.yaml
+          curl -L "http://127.0.0.1(cat VlessLinks.txt | tr '\n' '|')&include=vless|reality" -o all_proxies.yaml
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action"
+          git add all_proxies.yaml
+          git commit -m "Update proxies $(date)" || exit 0
+          git push
