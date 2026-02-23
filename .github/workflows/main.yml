@@ -1,4 +1,5 @@
-name: Collect Proxies
+name: Collect VLESS Proxies
+
 on:
   schedule:
     - cron: '0 * * * *'
@@ -9,34 +10,50 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Collect and Filter Vless
+      - name: Collect and filter VLESS
         run: |
           SOURCE_FILE=$(ls | grep -i "links.txt" | head -n 1)
-          rm -f all_proxies.yaml temp.txt
-          
-          # 1. Заголовок БЕЗ отступов
-          echo "proxies:" > all_proxies.yaml
-          
-          # 2. Собираем все ссылки
+          rm -f raw.txt temp.txt
+
           while IFS= read -r url || [ -n "$url" ]; do
             clean_url=$(echo "$url" | tr -d '\r' | xargs)
             [[ -z "$clean_url" || "$clean_url" == "#"* ]] && continue
-            curl -sL --max-time 15 "$clean_url" >> temp.txt
+
+            content=$(curl -sL --max-time 20 "$clean_url")
+
+            if echo "$content" | base64 -d >/dev/null 2>&1; then
+              echo "$content" | base64 -d >> temp.txt
+            else
+              echo "$content" >> temp.txt
+            fi
+
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
-          
-          # 3. Чистим: только vless, уникальные, ровно 2 пробела и дефис перед ссылкой
+
           sed -i 's/vless:/\nvless:/g' temp.txt
-          grep -oE "vless://[a-zA-Z0-9./?#=&@:_%+-]+" temp.txt | sort -u | head -n 30000 | sed 's/^/  - /' >> all_proxies.yaml
-          
+
+          grep -oE "vless://[a-zA-Z0-9./?#=&@:_%+-]+" temp.txt \
+          | grep "encryption=none" \
+          | grep "type=" \
+          | grep "sni=" \
+          | sort -u \
+          | head -n 2000 > raw.txt
+
           rm -f temp.txt
 
-      - name: Commit and Push
+      - name: Convert to Clash YAML
+        run: |
+          docker run --rm \
+            -v $PWD:/base \
+            tindy2013/subconverter \
+            /base/raw.txt /base/all_proxies.yaml clash
+
+      - name: Commit and push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
