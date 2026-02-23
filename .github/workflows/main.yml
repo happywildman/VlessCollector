@@ -24,34 +24,33 @@ jobs:
 
       - name: Generate Clash Config
         run: |
-          # 1. Валидация входных данных
-          if [[ ! -s "VlessLinks.txt" ]]; then 
-            echo "Error: VlessLinks.txt is empty or missing!"
-            exit 1
-          fi
+          # 1. Проверка ссылок
+          if [[ ! -s "VlessLinks.txt" ]]; then echo "VlessLinks.txt is empty"; exit 1; fi
+
+          # 2. Подготовка ссылок (кодируем в Base64 для безопасной передачи серверу)
+          # Subconverter лучше всего понимает ссылки, когда они приходят в одном запросе
+          RAW_LINKS=$(cat VlessLinks.txt | tr '\n' '|' | sed 's/|$//')
           
-          # 2. Подготовка чистой рабочей среды
-          # Переносим файлы во внутреннюю папку
-          cp VlessLinks.txt ./subconverter/
-          cp generate.ini ./subconverter/
-          
+          # 3. Запуск Subconverter в режиме сервера
           cd subconverter
-          # УДАЛЯЕМ пустой pref.ini, если он остался от прошлых запусков
-          rm -f pref.ini
-          
           chmod +x subconverter
+          ./subconverter & # Запуск в фоне
           
-          # 3. Запуск генерации
-          echo "Starting subconverter..."
-          ./subconverter -g
+          # Ждем пару секунд, пока сервер поднимется
+          sleep 3
           
-          # 4. Проверка результата
-          if [[ -f "clash_config.yaml" ]]; then
-            echo "SUCCESS: Config generated."
-            cp clash_config.yaml ../
+          # 4. Запрос конвертации через локальный API
+          # Мы передаем ссылки через параметр 'url' и просим формат 'clash'
+          echo "Sending conversion request..."
+          curl -s "http://127.0.0.1:25500/sub?target=clash&url=${RAW_LINKS}&insert=false" -o clash_config_raw.yaml
+          
+          # 5. Проверка результата
+          if grep -q "proxies:" clash_config_raw.yaml; then
+            echo "SUCCESS: Clash config generated."
+            cp clash_config_raw.yaml ../clash_config.yaml
           else
-            echo "CRITICAL ERROR: clash_config.yaml was not created."
-            ls -la
+            echo "ERROR: Generation failed. Server response:"
+            cat clash_config_raw.yaml
             exit 1
           fi
           cd ..
@@ -64,7 +63,7 @@ jobs:
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
             if git diff --cached --quiet; then
-              echo "No changes in config."
+              echo "No changes"
             else
               git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
               git push
