@@ -25,37 +25,46 @@ jobs:
 
       - name: Generate Clash Config
         run: |
+          # 1. Проверка входных данных
           if [[ ! -f "VlessLinks.txt" ]]; then echo "No VlessLinks.txt"; exit 1; fi
           
-          # КОМАНДА ИСПРАВЛЕНИЯ: Копируем наш конфиг и данные внутрь рабочей директории программы
+          # 2. Подготовка окружения: кладем конфиги прямо к исполняемому файлу
           cp generate.ini ./subconverter/
           cp VlessLinks.txt ./subconverter/
           
-          chmod +x ./subconverter/subconverter
-          
-          # Запускаем из папки программы
+          # 3. Переход в директорию и запуск
           cd subconverter
+          chmod +x subconverter
+          
+          echo "Запуск конвертации..."
           ./subconverter -g
           
-          # Возвращаем файл назад в корень для коммита
-          cp clash_config.yaml ../
-          cd ..
-
+          # 4. Проверка появления файла именно ТАМ, где работает программа
           if [[ -f "clash_config.yaml" ]]; then
-            echo "Success: clash_config.yaml generated."
+            echo "Файл успешно создан внутри папки subconverter."
+            cp clash_config.yaml ../
           else
-            echo "Error: File not found!"
+            echo "ОШИБКА: Файл clash_config.yaml не найден в $(pwd)"
+            ls -R # Вывод структуры для отладки, если опять упадет
             exit 1
           fi
+          cd ..
 
       - name: Commit and Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add clash_config.yaml
-          if git diff --cached --quiet; then
-            echo "No changes"
+          
+          # Проверяем, существует ли файл перед добавлением
+          if [[ -f "clash_config.yaml" ]]; then
+            git add clash_config.yaml
+            if git diff --cached --quiet; then
+              echo "Изменений нет"
+            else
+              git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+              git push
+            fi
           else
-            git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-            git push
+            echo "Файл для коммита отсутствует."
+            exit 1
           fi
