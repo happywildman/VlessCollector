@@ -25,27 +25,31 @@ jobs:
       - name: Generate Clash Config
         run: |
           # 1. Проверка входных данных
-          [[ ! -f "VlessLinks.txt" ]] && echo "No VlessLinks.txt" && exit 1
+          if [[ ! -f "VlessLinks.txt" ]]; then echo "VlessLinks.txt missing"; exit 1; fi
           
-          # 2. Подготовка файлов
-          # Копируем VlessLinks.txt и наш generate.ini в папку к бинарнику
+          # 2. Подготовка рабочей директории
+          # Нам нужно, чтобы все файлы были ВНУТРИ папки subconverter
           cp VlessLinks.txt ./subconverter/
           cp generate.ini ./subconverter/
-          
           cd subconverter
+          
+          # Создаем пустой pref.ini, если его нет, чтобы избежать ошибок инициализации
+          touch pref.ini
+          
           chmod +x subconverter
           
-          # 3. Запуск конвертации
-          # Используем флаг -g для чтения generate.ini
+          # 3. Запуск генерации
+          echo "Starting subconverter generation..."
           ./subconverter -g
           
-          # 4. Проверка и перемещение результата
+          # 4. Проверка результата
           if [[ -f "clash_config.yaml" ]]; then
-            echo "УСПЕХ: Файл сгенерирован."
+            echo "SUCCESS: clash_config.yaml created."
             cp clash_config.yaml ../
           else
-            echo "ОШИБКА: Файл не найден. Проверяем логи генерации..."
-            ls -lh
+            echo "ERROR: clash_config.yaml not found."
+            # Если файла нет, выводим содержимое generate.ini для финальной проверки
+            cat generate.ini
             exit 1
           fi
           cd ..
@@ -58,7 +62,7 @@ jobs:
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
             if git diff --cached --quiet; then
-              echo "Изменений в конфиге нет."
+              echo "No changes detected."
             else
               git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
               git push
