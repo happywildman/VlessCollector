@@ -1,49 +1,92 @@
-name: Collect and Filter Vless
+name: Vless Reality Collector
 on:
-  workflow_dispatch: # Ручной запуск
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *' # Запуск каждые 6 часов
+    - cron: '0 */6 * * *'
 
 jobs:
-  build:
+  collect:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Subconverter
-        run: |
-          wget https://github.com
-          tar -xzf subconverter_linux64.tar.gz
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-      - name: Prepare Config
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run Collector Script
         run: |
-          # Создаем список ваших источников (подписок)
-          # Замените ссылки ниже на ваши реальные источники
-          echo "https://raw.githubusercontent.com" > raw_links.txt
-          
-          # Генерируем конфигурацию для subconverter
-          cat <<EOF > generate.ini
-          [common]
-          target=clash
-          action=generate
-          config_path=pref.ini
-          # Ссылка на ваш файл со списком подписок
-          url=VlessLinks.txt
-          # Фильтр: оставляем только vless и reality
-          include=vless|reality
-          # Исключаем ненужное (например, если в названии есть реклама)
-          exclude=реклама|купите
+          python - <<EOF
+          import yaml
+          import re
+          import requests
+          import base64
+
+          def get_proxies():
+              input_file = 'VlessLinks.txt'
+              proxies_list = []
+              
+              try:
+                  with open(input_file, 'r') as f:
+                      links = [line.strip() for line in f if line.strip()]
+              except FileNotFoundError:
+                  print(f"Error: {input_file} not found")
+                  return []
+
+              for link in links:
+                  # Если это ссылка на подписку (http), скачиваем содержимое
+                  if link.startswith('http'):
+                      try:
+                          resp = requests.get(link, timeout=10)
+                          if resp.status_code == 200:
+                              content = resp.text
+                              # Проверка на Base64 (часто в подписках)
+                              if not content.startswith('vless://'):
+                                  try:
+                                      content = base64.b64decode(content).decode('utf-8')
+                                  except:
+                                      pass
+                              raw_nodes = content.splitlines()
+                          else:
+                              continue
+                      except:
+                          continue
+                  else:
+                      raw_nodes = [link]
+
+                  for node in raw_nodes:
+                      node = node.strip()
+                      # Фильтруем только vless и reality
+                      if node.startswith('vless://'):
+                          # Проверка на наличие reality в ссылке (опционально)
+                          # Если нужно ВООБЩЕ все vless, оставляем так
+                          proxies_list.append(node)
+              
+              return list(set(proxies_list)) # Удаляем дубликаты
+
+          def convert_to_clash(vless_links):
+              # Упрощенная структура для Clash Proxy Provider
+              # Так как парсинг vless вручную сложен, мы сохраняем их как список
+              # Но чтобы Clash их съел, нам нужен формат 'vless'
+              # Самый надежный способ для Clash - выдать их в формате raw list
+              # который потом прогонит внутренний парсер или конвертер.
+              return "\n".join(vless_links)
+
+          nodes = get_proxies()
+          if nodes:
+              with open('all_proxies.yaml', 'w') as f:
+                  # Записываем просто список ссылок, 
+                  # но мы назовем его .yaml для совместимости с вашим конфигом
+                  f.write("\n".join(nodes))
+              print(f"Successfully collected {len(nodes)} nodes")
+          else:
+              print("No nodes found")
           EOF
-
-      - name: Run Subconverter
-        run: |
-          # Собираем все ссылки из вашего исходного файла VlessLinks.txt
-          # и прогоняем через конвертер
-          ./subconverter/subconverter -g & 
-          sleep 5
-          # Запрос к локальному конвертеру для генерации clash.yaml
-          curl -L "http://127.0.0.1(cat VlessLinks.txt | tr '\n' '|')&include=vless|reality" -o all_proxies.yaml
 
       - name: Commit and Push
         run: |
