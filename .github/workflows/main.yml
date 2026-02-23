@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: '0 */6 * * *'
 
-# Исправляем ошибку 403: даем права на запись в репозиторий
+# Исправляем 403 Forbidden
 permissions:
   contents: write
 
@@ -17,40 +17,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Проверяем исходный файл и фильтруем
+      - name: Install Subconverter
+        run: |
+          # Исправленная ссылка на скачивание архива
+          wget -O subconverter_linux64.tar.gz https://github.com
+          tar -xzf subconverter_linux64.tar.gz
+          echo "Subconverter установлен"
+
+      - name: Проверяем исходный файл
         run: |
           echo "Используем исходный файл: VlessLinks.txt"
-          # Твоя рабочая очистка: оставляем только vless и reality
-          # Добавляем || true, чтобы grep не прерывал работу, если совпадений 0
-          grep -iE 'vless://|reality://' VlessLinks.txt > filtered_links.txt || true
-          echo "Найдено строк: $(wc -l < filtered_links.txt)"
+          # Фильтруем vless и reality, сохраняем во временный файл
+          grep -iE 'vless://|reality://' VlessLinks.txt > VlessLinks_filtered.txt || true
+          echo "Фильтрация завершена"
 
-      - name: Форматирование под Clash (YAML)
+      - name: Generate Clash Config
         run: |
-          # Чтобы Clash не выдавал ошибку 'cannot unmarshal', 
-          # создаем структуру proxies: [ 'ссылка1', 'ссылка2' ]
-          echo "proxies:" > all_proxies.yaml
-          
-          # Читаем отфильтрованные ссылки и оборачиваем каждую в кавычки с отступом
-          # Это делает файл валидным YAML для Clash Proxy Provider
-          while IFS= read -r line; do
-            if [ ! -z "$line" ]; then
-              echo "  - \"$line\"" >> all_proxies.yaml
-            fi
-          done < filtered_links.txt
-          
-          echo "Форматирование завершено. Файл all_proxies.yaml готов."
+          # Переносим отфильтрованные ссылки в итоговый файл без лишних заголовков
+          if [ -s VlessLinks_filtered.txt ]; then
+            cat VlessLinks_filtered.txt > all_proxies.yaml
+          else
+            echo "Внимание: Фильтр ничего не нашел!"
+            touch all_proxies.yaml
+          fi
 
       - name: Commit and Push
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action"
           git add all_proxies.yaml
-          
-          # Проверяем изменения, чтобы не падать на пустом коммите
+          # Проверка на наличие изменений
           if git diff --cached --quiet; then
-            echo "Изменений нет, пропускаем push"
+            echo "No changes to commit"
           else
-            git commit -m "Update proxies: $(date +'%Y-%m-%d %H:%M:%S')"
+            git commit -m "Update proxies $(date)"
             git push
           fi
