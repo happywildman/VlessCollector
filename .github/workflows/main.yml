@@ -1,9 +1,9 @@
 name: Subconverter Filter Optimized
 
 on:
-  workflow_dispatch: # Позволяет запускать вручную
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *' # Запуск каждые 6 часов
+    - cron: '0 */6 * * *'
 
 permissions:
   contents: write
@@ -18,63 +18,43 @@ jobs:
 
       - name: Install Subconverter
         run: |
-          # 1. Получаем URL последней версии через GitHub API для стабильности
           ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
-          
-          if [ -z "$ASSET_URL" ]; then
-            echo "Ошибка: Не удалось найти ссылку на скачивание Subconverter"
-            exit 1
-          fi
-          
-          echo "Скачивание Subconverter из: $ASSET_URL"
+          if [ -z "$ASSET_URL" ]; then exit 1; fi
           curl -L -o subconverter.tar.gz "$ASSET_URL"
-          
-          # 2. Распаковка архива
           tar -xzf subconverter.tar.gz
-          echo "Распаковка завершена"
 
       - name: Generate Clash Config
         run: |
-          # 3. Проверка наличия входного файла и конфига
-          if [[ ! -f "VlessLinks.txt" ]]; then
-            echo "Критическая ошибка: Файл VlessLinks.txt не найден в корне репозитория!"
-            exit 1
-          fi
-
-          if [[ ! -f "generate.ini" ]]; then
-            echo "Критическая ошибка: Файл generate.ini не найден!"
-            exit 1
-          fi
-
-          # 4. Настройка прав и запуск генерации
+          if [[ ! -f "VlessLinks.txt" ]]; then echo "No VlessLinks.txt"; exit 1; fi
+          
+          # КОМАНДА ИСПРАВЛЕНИЯ: Копируем наш конфиг и данные внутрь рабочей директории программы
+          cp generate.ini ./subconverter/
+          cp VlessLinks.txt ./subconverter/
+          
           chmod +x ./subconverter/subconverter
           
-          # Запуск в режиме генерации (-g)
-          # Программа ищет generate.ini в текущей директории
-          ./subconverter/subconverter -g
+          # Запускаем из папки программы
+          cd subconverter
+          ./subconverter -g
           
-          # 5. Верификация результата
+          # Возвращаем файл назад в корень для коммита
+          cp clash_config.yaml ../
+          cd ..
+
           if [[ -f "clash_config.yaml" ]]; then
-            echo "Успех: clash_config.yaml создан."
-            # Проверка, что файл не пустой и содержит прокси
-            NODE_COUNT=$(grep -c "name:" clash_config.yaml || echo "0")
-            echo "Найдено узлов в конфиге: $NODE_COUNT"
+            echo "Success: clash_config.yaml generated."
           else
-            echo "Ошибка: Файл clash_config.yaml не был сгенерирован!"
+            echo "Error: File not found!"
             exit 1
           fi
 
       - name: Commit and Push
         run: |
-          # 6. Настройка Git и пуш изменений
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
           git add clash_config.yaml
-          
-          # Проверка на наличие реальных изменений, чтобы не спамить в историю коммитов
           if git diff --cached --quiet; then
-            echo "Изменений в конфиге нет. Пропуск коммита."
+            echo "No changes"
           else
             git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
             git push
