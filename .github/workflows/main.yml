@@ -1,51 +1,49 @@
-name: Collect Proxies
+name: Build Clash Subscription
 
 on:
-  schedule:
-    - cron: '0 * * * *'
   workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *" # запуск каждый час, можно изменить
 
 jobs:
-  build:
+  build-subscription:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Collect and Filter Vless & Reality
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Verify input files
         run: |
-          SOURCE_FILE=$(ls | grep -i "VlessLinks.txt" | head -n 1)
-          rm -f all_proxies.yaml temp.txt raw.txt
+          echo "Файлы в рабочем каталоге:"
+          ls -la
 
-          # 1. Заголовок YAML
-          echo "proxies:" > all_proxies.yaml
-
-          # 2. Собираем все ссылки
-          while IFS= read -r url || [ -n "$url" ]; do
-            clean_url=$(echo "$url" | tr -d '\r' | xargs)
-            [[ -z "$clean_url" || "$clean_url" == "#"* ]] && continue
-            curl -sL --max-time 15 "$clean_url" >> temp.txt
-            echo "" >> temp.txt
-          done < "$SOURCE_FILE"
-
-          # 3. Чистим и оставляем только vless и reality
-          sed -i 's/\(vless\|reality\):/\n\1:/g' temp.txt
-          grep -oE "(vless|reality)://[a-zA-Z0-9./?#=&@:_%+-]+" temp.txt | sort -u | head -n 30000 > raw.txt
+      - name: Filter only VLESS and REALITY links
+        run: |
+          grep -iE 'vless://|reality://' raw.txt > raw_filtered.txt
+          echo "Количество отобранных ссылок:"
+          wc -l raw_filtered.txt
 
       - name: Run Subconverter
         run: |
           docker run --rm -v "${PWD}:/base" tindy2013/subconverter \
-            -i /base/raw.txt \
+            -i /base/raw_filtered.txt \
             -o /base/all_proxies.yaml \
-            -f clash
-
-      - name: Commit and Push
+            -f clash \
+            -hc
+          
+      - name: Verify output
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          echo "Содержимое all_proxies.yaml (первые 20 строк):"
+          head -n 20 all_proxies.yaml
+
+      - name: Commit and push updated proxies
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "actions@github.com"
           git add all_proxies.yaml
-          git commit -m "Update proxies $(date)" || exit 0
+          git commit -m "Update Clash subscription" || echo "No changes to commit"
           git push
