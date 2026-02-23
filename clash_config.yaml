@@ -1,8 +1,10 @@
-proxies: []
+proxies:
+
 proxy-groups:
-  - name: PROXY
-    type: select
-    proxies:
-      - DIRECT
+- name: PROXY
+  type: select
+  proxies:
+    - DIRECT
+
 rules:
-  - MATCH,PROXY
+- MATCH,PROXY
