@@ -24,7 +24,7 @@ jobs:
 
       - name: Generate and Clean Config
         run: |
-          # 1. Сбор ссылок
+          # 1. Сбор ссылок из файла
           RAW_DATA=""
           while IFS= read -r line || [[ -n "$line" ]]; do
             CLEAN_URL=$(echo "$line" | xargs)
@@ -46,57 +46,61 @@ jobs:
                --data-urlencode "emoji=true" \
                -o raw_clash.yaml
 
-          # 4. ТЕКСТОВАЯ ФИЛЬТРАЦИЯ (БЕЗ YAML-ПАРСЕРА)
+          # 4. ТЕКСТОВАЯ ФИЛЬТРАЦИЯ (САМАЯ НАДЕЖНАЯ)
           python3 <<EOF
           import re
 
           with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
-              content = f.read()
+              lines = f.readlines()
 
-          # Ищем все блоки прокси между "- {" и "}"
-          proxy_blocks = re.findall(r'- \{.*?\}', content, re.DOTALL)
-          
           vless_only = []
           proxy_names = []
-          
-          garbage = ['t.me', 'http', 'www', '@', '.com', '.net', 'join', 'sub', 'free', 'chanel']
 
-          for block in proxy_blocks:
-              # Проверяем, что это точно VLESS
-              if 'type: vless' in block.lower():
-                  # Извлекаем имя для очистки
-                  name_match = re.search(r'name: (.*?),', block)
-                  if name_match:
-                      old_name = name_match.group(1).strip()
-                      new_name = old_name
-                      # Чистим рекламу из имени
+          # Список мусора для удаления
+          garbage = ['t.me', 'http', 'www', '@', '.com', '.net', 'join', 'sub', 'free', 'shop']
+
+          for line in lines:
+              # Ищем строку, в которой есть и имя, и тип vless
+              if 'type: vless' in line.lower() and 'name:' in line.lower():
+                  # Извлекаем имя
+                  name_part = re.search(r'name:\s*(.*?),', line)
+                  if name_part:
+                      original_name = name_part.group(1).strip()
+                      # Очистка имени от мусора
+                      clean_name = original_name.split('|')[0].split(' / ')[0].strip()
                       for word in garbage:
-                          if word in new_name.lower():
-                              new_name = re.sub(r'|.*', '', new_name) # Отрезаем всё после палки |
-                              new_name = "".join([char for char in new_name if char.isprintable()])
+                          if word in clean_name.lower():
+                              clean_name = "Vless-Node"
                       
-                      # Если имя стало пустым или слишком коротким
-                      if len(new_name) < 3: new_name = f"Vless-Node-{len(vless_only)}"
+                      # Чтобы избежать дублей имен в Clash
+                      count = 1
+                      base_name = clean_name
+                      while clean_name in proxy_names:
+                          clean_name = f"{base_name}-{count}"
+                          count += 1
                       
-                      # Заменяем старое имя на новое в блоке
-                      block = block.replace(f"name: {old_name}", f"name: {new_name}")
-                      vless_only.append(block)
-                      proxy_names.append(new_name)
+                      # Собираем строку прокси заново с чистым именем
+                      new_line = line.replace(original_name, clean_name)
+                      vless_only.append(new_line.strip())
+                      proxy_names.append(clean_name)
 
-          # Сборка итогового файла
+          # Сборка финального файла
           with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
               f.write("proxies:\n")
               for p in vless_only:
-                  f.write(f"{p}\n")
+                  f.write(f"- {p.lstrip('- ')}\n")
               
               f.write("\nproxy-groups:\n")
               f.write("- name: PROXY\n  type: select\n  proxies:\n")
-              for name in proxy_names:
-                  f.write(f"    - {name}\n")
+              if proxy_names:
+                  for name in proxy_names:
+                      f.write(f"    - {name}\n")
+              else:
+                  f.write("    - DIRECT\n") # Фолбэк если ничего не нашли
               
               f.write("\nrules:\n- MATCH,PROXY\n")
 
-          print(f"Done! Found {len(vless_only)} VLESS nodes.")
+          print(f"Extraction complete: Found {len(vless_only)} nodes.")
           EOF
           cd ..
 
@@ -106,5 +110,7 @@ jobs:
           git config --local user.name "github-actions[bot]"
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            git diff --cached --quiet || (git commit -m "Clean Vless Update" && git push)
+            # Принудительный коммит для теста
+            git commit -m "Manual update: Vless Reality $(date +%H:%M:%S)" || echo "No changes"
+            git push
           fi
