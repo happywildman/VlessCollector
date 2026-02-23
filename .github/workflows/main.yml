@@ -48,10 +48,9 @@ jobs:
 
       - name: Convert to Clash YAML
         run: |
-          docker run --rm \
-            -v $PWD:/base \
-            tindy2013/subconverter \
-            /base/raw.txt /base/all_proxies.yaml clash
+          ls -la
+          head -n 5 raw.txt
+          docker run --rm -v "${PWD}:/base" tindy2013/subconverter "/base/raw.txt" "/base/all_proxies.yaml" clash
 
       - name: Commit and push
         run: |
@@ -60,5 +59,3 @@ jobs:
           git add all_proxies.yaml
           git commit -m "Update proxies $(date)" || exit 0
           git push
-
-
