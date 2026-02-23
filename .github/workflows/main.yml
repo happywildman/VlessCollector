@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,8 +28,10 @@ jobs:
 
           rm -f all_proxies.yaml temp.txt
 
+          # Заголовок YAML
           echo "proxies:" > all_proxies.yaml
 
+          # Собираем все ссылки из подписок
           while IFS= read -r url || [ -n "$url" ]; do
             clean_url=$(echo "$url" | tr -d '\r' | xargs)
             [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
@@ -37,9 +39,12 @@ jobs:
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
+          # Разделяем слипшиеся ссылки vless
           sed -i 's/vless:/\nvless:/g' temp.txt
 
+          # Фильтруем: только vless, без %25, уникальные, лимит 30000
           grep -oE 'vless://[^[:space:]]+' temp.txt \
+            | grep -v "%25" \
             | sort -u \
             | head -n 30000 \
             | sed 's/^/  - /' >> all_proxies.yaml
