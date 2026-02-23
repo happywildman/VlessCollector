@@ -1,8 +1,8 @@
 name: Collect Proxies
 on:
   schedule:
-    - cron: '0 * * * *' # Запуск каждый час
-  workflow_dispatch:   # Кнопка для ручного запуска
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,47 +16,35 @@ jobs:
 
       - name: Collect and Clean Vless
         run: |
-          # 1. Поиск файла со ссылками
           SOURCE_FILE=$(ls | grep -i "links.txt" | head -n 1)
+          if [ -z "$SOURCE_FILE" ]; then exit 1; fi
           
-          if [ -z "$SOURCE_FILE" ]; then
-            echo "ОШИБКА: Файл со ссылками не найден!"
-            exit 1
-          fi
+          rm -f all_proxies.txt temp.txt filtered.txt
+          touch temp.txt
           
-          # 2. Очистка старых данных
-          rm -f all_proxies.txt temp_proxies.txt filtered.txt
-          touch temp_proxies.txt
-          
-          # 3. Сбор данных из всех источников
+          # 1. Скачиваем всё
           while IFS= read -r url || [ -n "$url" ]; do
             clean_url=$(echo "$url" | tr -d '\r' | xargs)
             [[ -z "$clean_url" || "$clean_url" == "#"* ]] && continue
-            
-            echo "Загрузка: $clean_url"
-            curl -sL --max-time 15 "$clean_url" >> temp_proxies.txt
-            echo "" >> temp_proxies.txt
+            curl -sL --max-time 15 "$clean_url" >> temp.txt
+            echo "" >> temp.txt
           done < "$SOURCE_FILE"
           
-          # 4. ХИРУРГИЧЕСКАЯ ЧИСТКА:
-          # Разделяем слипшиеся строки
-          sed -i 's/vless:/\nvless:/g' temp_proxies.txt
+          # 2. Декодируем URL-мусор (убираем %25 и прочее)
+          # Оставляем только строки, начинающиеся на vless://
+          # Очищаем от мусора в конце и начале
+          sed -i 's/vless:/\nvless:/g' temp.txt
+          grep -a "vless://" temp.txt | sed 's/.*vless:\/\//vless:\/\//' | cut -d' ' -f1 | cut -d'"' -f1 | cut -d"'" -f1 > filtered.txt
           
-          # Вырезаем ТОЛЬКО ссылки vless:// (убираем рекламу, теги и мусор)
-          grep -oE "vless://[a-zA-Z0-9./?#=&@:_%+-]+" temp_proxies.txt > filtered.txt
+          # 3. Убираем дубликаты и лимит 30 000
+          sort -u filtered.txt | grep -v "%25%25" | head -n 30000 > all_proxies.txt
           
-          # Удаляем дубликаты и берем ровно 30 000 самых свежих
-          sort -u filtered.txt | head -n 30000 > all_proxies.txt
-          
-          # Если файл пустой, создаем заглушку
-          if [ ! -s all_proxies.txt ]; then echo "# No Vless found" > all_proxies.txt; fi
-          
-          rm -f temp_proxies.txt filtered.txt
+          rm -f temp.txt filtered.txt
 
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all_proxies.txt
-          git commit -m "Update Vless List $(date +'%Y-%m-%d %H:%M')" || exit 0
+          git commit -m "Fix encoding and update list $(date)" || exit 0
           git push
