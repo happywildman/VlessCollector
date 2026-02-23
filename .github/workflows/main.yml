@@ -1,4 +1,4 @@
-name: Subconverter Vless Reality Ultimate
+name: Subconverter Vless Reality Final
 
 on:
   workflow_dispatch:
@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Dependencies
+        run: |
+          # Устанавливаем PyYAML для обработки конфига
+          pip install PyYAML
+
       - name: Install Subconverter
         run: |
           ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
@@ -24,7 +29,7 @@ jobs:
 
       - name: Generate and Clean Config
         run: |
-          # 1. Сбор и нормализация ссылок
+          # 1. Сбор ссылок
           RAW_DATA=""
           while IFS= read -r line || [[ -n "$line" ]]; do
             CLEAN_URL=$(echo "$line" | xargs)
@@ -38,48 +43,71 @@ jobs:
           ./subconverter & 
           sleep 5
 
-          # 3. Запрос к API с первичным фильтром
-          # target=clash, list=true (чистый список), scv=false
+          # 3. Запрос к API
           curl -s -G "http://127.0.0.1:25500/sub" \
                --data-urlencode "target=clash" \
                --data-urlencode "url=${FINAL_URLS}" \
                --data-urlencode "list=true" \
-               --data-urlencode "emoji=true" \
                --data-urlencode "scv=false" \
                -o raw_clash.yaml
 
-          # 4. ГЛУБОКАЯ ОЧИСТКА (Python скрипт для парсинга структуры)
-          # Мы используем Python, так как он надежнее работает с YAML структурой
+          # 4. ГЛУБОКАЯ ОЧИСТКА НА PYTHON (с обработкой ошибок кодировки)
           python3 <<EOF
           import yaml
+          import sys
 
-          with open('raw_clash.yaml', 'r', encoding='utf-8') as f:
-              data = yaml.safe_load(f)
+          def clean_config():
+              try:
+                  # Открываем с игнорированием ошибок кодировки, чтобы DC/BOM не вешали скрипт
+                  with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
+                      content = f.read()
+                      data = yaml.safe_load(content)
 
-          if data and 'proxies' in data:
-              # Оставляем только VLESS, проверяя поле 'type' внутри каждого прокси
-              clean_proxies = [p for p in data['proxies'] if p.get('type') == 'vless']
-              
-              # Чистим названия от рекламы
-              bad_words = ['http', 'www', 't.me', '@', 'Join', 'Subscribe', 'Channel', '.com', '.net', '.org', 'free', 'vpn']
-              for p in clean_proxies:
-                  name = p.get('name', 'Vless-Node')
-                  for word in bad_words:
-                      if word.lower() in name.lower():
-                          # Удаляем рекламное слово или обрезаем его
-                          name = name.split('|')[0].strip() # Часто реклама идет после |
-                  p['name'] = name
+                  if not data or 'proxies' not in data:
+                      print("No proxies found in raw data")
+                      return
 
-              data['proxies'] = clean_proxies
-              
-              # Обновляем группу выбора, чтобы в ней были только оставшиеся прокси
-              if 'proxy-groups' in data:
-                  for group in data['proxy-groups']:
-                      if 'proxies' in group:
-                          group['proxies'] = [p['name'] for p in clean_proxies]
+                  # Оставляем ТОЛЬКО vless (реальный поиск по типу внутри)
+                  vless_proxies = [p for p in data['proxies'] if str(p.get('type')).lower() == 'vless']
+                  
+                  # Список мусора для удаления из имен
+                  garbage = ['http', 'www', 't.me', '@', 'join', 'subscribe', '.com', '.net', 'shop', 'vpn', 'proxy']
+                  
+                  for p in vless_proxies:
+                      name = p.get('name', 'Node')
+                      # Если в имени есть мусор, пробуем оставить только первую часть до пробела или разделителя
+                      if any(x in name.lower() for x in garbage):
+                          # Очистка: берем текст до первого спецсимвола, если он длинный
+                          name = name.split('|')[0].split(' / ')[0].strip()
+                      
+                      # Удаляем остатки ссылок из имен
+                      for word in garbage:
+                          if word in name.lower():
+                              name = name.replace(word, "").strip()
+                      
+                      p['name'] = name if len(name) > 1 else "Vless-Reality"
 
-              with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
-                  yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+                  data['proxies'] = vless_proxies
+
+                  # Чистим группы (оставляем только vless имена)
+                  if 'proxy-groups' in data:
+                      valid_names = [p['name'] for p in vless_proxies]
+                      for group in data['proxy-groups']:
+                          if 'proxies' in group:
+                              group['proxies'] = [n for n in group['proxies'] if n in valid_names]
+                  
+                  # Удаляем лишние правила, оставляя чистый конфиг
+                  data['rules'] = ["MATCH,DIRECT"] 
+
+                  with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
+                      yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+                  print(f"Successfully filtered {len(vless_proxies)} vless nodes.")
+
+              except Exception as e:
+                  print(f"Python Error: {e}")
+                  sys.exit(1)
+
+          clean_config()
           EOF
           cd ..
 
@@ -89,5 +117,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            git diff --cached --quiet || (git commit -m "Update Clean Vless/Reality $(date)" && git push)
+            git diff --cached --quiet || (git commit -m "Update Vless-Reality $(date)" && git push)
           fi
