@@ -1,4 +1,4 @@
-name: Subconverter Filter Optimized
+name: Subconverter Filter Final
 
 on:
   workflow_dispatch:
@@ -24,33 +24,42 @@ jobs:
 
       - name: Generate Clash Config
         run: |
-          # 1. Проверка ссылок
-          if [[ ! -s "VlessLinks.txt" ]]; then echo "VlessLinks.txt is empty"; exit 1; fi
-
-          # 2. Подготовка ссылок (кодируем в Base64 для безопасной передачи серверу)
-          # Subconverter лучше всего понимает ссылки, когда они приходят в одном запросе
-          RAW_LINKS=$(cat VlessLinks.txt | tr '\n' '|' | sed 's/|$//')
+          # 1. Собираем все ссылки из VlessLinks.txt в одну переменную, очищая их
+          # Читаем файл, удаляем пустые строки и пробелы в начале/конце
+          RAW_DATA=""
+          while IFS= read -r line || [[ -n "$line" ]]; do
+            CLEAN_URL=$(echo "$line" | xargs)
+            if [[ ! -z "$CLEAN_URL" ]]; then
+              RAW_DATA="${RAW_DATA}${CLEAN_URL}|"
+            fi
+          done < VlessLinks.txt
           
-          # 3. Запуск Subconverter в режиме сервера
+          # Убираем последний символ '|'
+          FINAL_URLS=$(echo "$RAW_DATA" | sed 's/|$//')
+
+          # 2. Запуск сервера Subconverter
           cd subconverter
           chmod +x subconverter
-          ./subconverter & # Запуск в фоне
-          
-          # Ждем пару секунд, пока сервер поднимется
-          sleep 3
-          
-          # 4. Запрос конвертации через локальный API
-          # Мы передаем ссылки через параметр 'url' и просим формат 'clash'
-          echo "Sending conversion request..."
-          curl -s "http://127.0.0.1:25500/sub?target=clash&url=${RAW_LINKS}&insert=false" -o clash_config_raw.yaml
-          
-          # 5. Проверка результата
+          ./subconverter & 
+          sleep 5 # Даем больше времени на запуск
+
+          # 3. Запрос конвертации
+          # Используем --data-urlencode, чтобы спецсимволы в ссылках не ломали HTTP запрос
+          echo "Sending request to subconverter..."
+          curl -s -G "http://127.0.0.1:25500/sub" \
+               --data-urlencode "target=clash" \
+               --data-urlencode "url=${FINAL_URLS}" \
+               --data-urlencode "insert=false" \
+               --data-urlencode "emoji=true" \
+               -o clash_config_raw.yaml
+
+          # 4. Проверка
           if grep -q "proxies:" clash_config_raw.yaml; then
-            echo "SUCCESS: Clash config generated."
+            echo "SUCCESS: Config created."
             cp clash_config_raw.yaml ../clash_config.yaml
           else
-            echo "ERROR: Generation failed. Server response:"
-            cat clash_config_raw.yaml
+            echo "ERROR: No nodes found in output. Response preview:"
+            head -n 20 clash_config_raw.yaml
             exit 1
           fi
           cd ..
@@ -59,13 +68,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            if git diff --cached --quiet; then
-              echo "No changes"
-            else
-              git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
-              git push
-            fi
+            git diff --cached --quiet || (git commit -m "Update Clash $(date)" && git push)
           fi
