@@ -7,34 +7,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Добавляем права на запись прямо в код, на случай если в настройках что-то не нажалось
     permissions:
       contents: write
       
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Обновили версию до актуальной
+        uses: actions/checkout@v4
 
-      - name: Collect all proxies
+      - name: Collect and Filter proxies
         run: |
-          # Проверяем, на месте ли файл
-          if [ ! -f VlessLinks.txt ]; then
-            echo "Ошибка: файл VlessLinks.txt не найден в корне репозитория!"
-            ls -R
-            exit 1
-          fi
+          rm -f all_proxies.txt temp_proxies.txt
+          touch temp_proxies.txt
           
-          rm -f all_proxies.txt
-          touch all_proxies.txt
-          
-          # Читаем файл VlessLinks.txt и скачиваем содержимое
+          # Скачиваем всё в один файл
           while IFS= read -r url || [ -n "$url" ]; do
-            # Пропускаем пустые строки
             [[ -z "$url" ]] && continue
             echo "Скачиваю: $url"
-            curl -sL --max-time 10 "$url" >> all_proxies.txt
-            echo "" >> all_proxies.txt
-          done < VlessLinks.txt
+            curl -sL --max-time 15 "$url" >> temp_proxies.txt
+            echo "" >> temp_proxies.txt
+          done < links.txt
+          
+          # ЧИСТКА: 
+          # 1. Оставляем только строки с vless/ss/trojan (убираем мусор)
+          # 2. Убираем дубликаты (они весят больше всего)
+          # 3. Ограничиваем файл (например, первыми 20 000 строк, этого за глаза)
+          grep -E "vless:|ss:|trojan:|vmess:|hy2:" temp_proxies.txt | sort -u | head -n 20000 > all_proxies.txt
+          
+          rm temp_proxies.txt
+
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
