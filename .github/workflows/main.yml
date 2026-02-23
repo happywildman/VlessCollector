@@ -1,4 +1,4 @@
-name: Subconverter Vless Reality Final
+name: Subconverter Vless Reality Final Fix
 on:
   workflow_dispatch:
   schedule:
@@ -13,9 +13,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: pip install ruamel.yaml
-
       - name: Install Subconverter
         run: |
           ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
@@ -24,8 +21,8 @@ jobs:
 
       - name: Generate and Strict Clean
         run: |
-          # 1. Сбор ссылок
-          FINAL_URLS=$(grep -v '^$' VlessLinks.txt | tr -d '\r' | tr '\n' '|' | sed 's/|$//')
+          # 1. Сбор ссылок (без изменений, раз они рабочие)
+          RAW_URLS=$(grep -v '^#' VlessLinks.txt | grep -v '^$' | tr -d '\r' | tr '\n' '|' | sed 's/|$//')
 
           # 2. Запуск сервера
           cd subconverter
@@ -36,76 +33,85 @@ jobs:
           # 3. Запрос к API
           curl -s -G "http://127.0.0.1:25500/sub" \
                --data-urlencode "target=clash" \
-               --data-urlencode "url=${FINAL_URLS}" \
+               --data-urlencode "url=${RAW_URLS}" \
                --data-urlencode "emoji=true" \
-               --data-urlencode "list=false" \
                -o raw_clash.yaml
 
-          # 4. ПИТОН-СКРИПТ: Профессиональный парсинг
+          # 4. ПИТОН-СКРИПТ (Логика прямого сканирования)
           python3 <<EOF
           import re
-          from ruamel.yaml import YAML
+          import os
 
           def sanitize_name(name):
-              name = str(name)
-              name = re.split(r'[|/@—]', name)[0].strip()
+              # Очистка имени от рекламы
+              name = re.split(r'[|/@—]', str(name))[0].strip()
               name = re.sub(r'http\S+|www\S+|\.com|\.net|t\.me\S+|@[a-zA-Z0-9_]+', '', name, flags=re.IGNORECASE)
               name = "".join(c for c in name if c.isalnum() or c in " .-_()").strip()
               return name if len(name) > 1 else "Vless-Server"
 
-          yaml = YAML()
-          yaml.preserve_quotes = True
-          yaml.indent(mapping=2, sequence=4, offset=2)
+          if not os.path.exists('raw_clash.yaml'):
+              exit(1)
 
-          try:
-              with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
-                  data = yaml.load(f)
-          except Exception as e:
-              print(f"Load error: {e}")
+          with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
+              content = f.read()
+
+          # Находим секцию proxies
+          proxies_match = re.search(r'proxies:(.*?)(?:\n\w+:|$)', content, re.DOTALL)
+          if not proxies_match:
+              print("Proxies section not found")
               exit(0)
-
-          if not data or 'proxies' not in data:
-              print("No proxies found")
-              exit(0)
-
-          vless_list = []
-          seen_names = set()
-
-          for p in data['proxies']:
-              # Фильтруем только VLESS
-              if str(p.get('type', '')).lower() == 'vless':
-                  # Чистим имя
-                  old_name = p.get('name', 'Node')
-                  new_name = sanitize_name(old_name)
-                  
-                  # Уникальность
-                  final_name = new_name
-                  counter = 1
-                  while final_name in seen_names:
-                      final_name = f"{new_name}-{counter}"
-                      counter += 1
-                  
-                  p['name'] = final_name
-                  seen_names.add(final_name)
-                  vless_list.append(p)
-
-          # Собираем новый конфиг
-          output = {
-              'proxies': vless_list,
-              'proxy-groups': [
-                  {
-                      'name': 'PROXY',
-                      'type': 'select',
-                      'proxies': list(seen_names) if seen_names else ['DIRECT']
-                  }
-              ],
-              'rules': ['MATCH,PROXY']
-          }
-
-          with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
-              yaml.dump(output, f)
           
-          print(f"Finished: {len(vless_list)} nodes.")
+          proxies_data = proxies_match.group(1)
+
+          # Логика сканера: ищем все вхождения '- name:' и захватываем до следующего '- name:'
+          # Это исключает ошибки регулярных выражений при сложных ключах Reality
+          vless_proxies = []
+          proxy_names = []
+          
+          # Находим индексы всех начал прокси
+          starts = [m.start() for m in re.finditer(r'(?:^|\n)\s*-\s*', proxies_data)]
+          
+          for i in range(len(starts)):
+              start = starts[i]
+              end = starts[i+1] if i+1 < len(starts) else len(proxies_data)
+              block = proxies_data[start:end].strip()
+              
+              if 'type: vless' in block.lower():
+                  # Извлекаем имя
+                  name_match = re.search(r'name:\s*"?([^",\n\}]+)"?', block)
+                  if name_match:
+                      old_name = name_match.group(1).strip()
+                      new_name = sanitize_name(old_name)
+                      
+                      # Уникальность
+                      final_name = new_name
+                      count = 1
+                      while final_name in proxy_names:
+                          final_name = f"{new_name}-{count}"
+                          count += 1
+                      
+                      # Заменяем только имя, сохраняя параметры
+                      # Важно: убираем лишние дефисы, которые могли прийти из сплита
+                      clean_node = block.replace(old_name, final_name, 1).lstrip('- ').strip()
+                      vless_proxies.append(clean_node)
+                      proxy_names.append(final_name)
+
+          # Сборка финального файла
+          with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
+              f.write("proxies:\n")
+              for p in vless_proxies:
+                  f.write(f"- {p}\n")
+              
+              f.write("\nproxy-groups:\n- name: PROXY\n  type: select\n  proxies:\n")
+              if proxy_names:
+                  for name in proxy_names:
+                      f.write(f"    - {name}\n")
+              else:
+                  f.write("    - DIRECT\n")
+              
+              f.write("\nrules:\n- MATCH,PROXY\n")
+          
+          print(f"Extraction complete: {len(vless_proxies)} nodes found.")
           EOF
           cd ..
 
@@ -113,8 +119,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          if [[ -s "clash_config.yaml" ]]; then
+          if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            git commit -m "Vless/Reality Stable Update $(date +%D)" || exit 0
-            git push
+            # Коммит будет создан только если есть реальные изменения
+            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Vless $(date +%H:%M)" && git push)
           fi
