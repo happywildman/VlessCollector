@@ -1,40 +1,23 @@
-name: Subconverter Workflow
+name: Subconverter Filter
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  filter_vless_reality:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: List files before processing
-        run: ls -la
-
-      - name: Filter only VLESS and REALITY links
+      - name: Проверяем исходный файл
         run: |
-          echo "Проверяем исходный файл..."
-          if [ -f raw.txt ]; then
-            INPUT_FILE="raw.txt"
-          elif [ -f VlessLinks.txt ]; then
-            INPUT_FILE="VlessLinks.txt"
-          else
-            echo "Ошибка: исходный файл не найден!"
-            exit 1
-          fi
-          echo "Используем файл: $INPUT_FILE"
-          grep -iE 'vless://|reality://' "$INPUT_FILE" > raw_filtered.txt
-          echo "Количество отобранных ссылок:"
-          wc -l raw_filtered.txt
+          echo "Используем файл: VlessLinks.txt"
+          grep -iE 'vless://|reality://' VlessLinks.txt > raw_filtered.txt
+          echo "Фильтрация завершена. Результат в raw_filtered.txt"
 
-      - name: Run Subconverter Docker
+      - name: Вывод первых 10 строк для проверки
         run: |
-          docker run --rm -v "${PWD}:/base" tindy2013/subconverter \
-          -i /base/raw_filtered.txt \
-          -o /base/all_proxies.yaml \
-          -f clash
-
-      - name: List output
-        run: ls -la
+          echo "Проверяем результат:"
+          head raw_filtered.txt
