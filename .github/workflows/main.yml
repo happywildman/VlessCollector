@@ -14,19 +14,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Collect and Filter Vless
+      - name: Collect and Clean Vless
         run: |
-          # 1. Поиск файла со ссылками (игнорируем регистр)
+          # 1. Поиск файла со ссылками
           SOURCE_FILE=$(ls | grep -i "links.txt" | head -n 1)
           
           if [ -z "$SOURCE_FILE" ]; then
             echo "ОШИБКА: Файл со ссылками не найден!"
-            ls -R
             exit 1
           fi
           
           # 2. Очистка старых данных
-          rm -f all_proxies.txt temp_proxies.txt
+          rm -f all_proxies.txt temp_proxies.txt filtered.txt
           touch temp_proxies.txt
           
           # 3. Сбор данных из всех источников
@@ -39,13 +38,20 @@ jobs:
             echo "" >> temp_proxies.txt
           done < "$SOURCE_FILE"
           
-          # 4. ФИЛЬТРАЦИЯ: только vless (Reality входит сюда), удаление дублей, лимит 30000
-          grep -Ei "vless:" temp_proxies.txt | sort -u | head -n 30000 > all_proxies.txt
+          # 4. ХИРУРГИЧЕСКАЯ ЧИСТКА:
+          # Разделяем слипшиеся строки
+          sed -i 's/vless:/\nvless:/g' temp_proxies.txt
           
-          # Проверка на пустоту (чтобы не было ошибки git)
+          # Вырезаем ТОЛЬКО ссылки vless:// (убираем рекламу, теги и мусор)
+          grep -oE "vless://[a-zA-Z0-9./?#=&@:_%+-]+" temp_proxies.txt > filtered.txt
+          
+          # Удаляем дубликаты и берем ровно 30 000 самых свежих
+          sort -u filtered.txt | head -n 30000 > all_proxies.txt
+          
+          # Если файл пустой, создаем заглушку
           if [ ! -s all_proxies.txt ]; then echo "# No Vless found" > all_proxies.txt; fi
           
-          rm temp_proxies.txt
+          rm -f temp_proxies.txt filtered.txt
 
       - name: Commit and Push
         run: |
