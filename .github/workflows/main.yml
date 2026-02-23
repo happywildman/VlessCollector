@@ -1,97 +1,56 @@
-name: Vless Reality Collector
+name: Subconverter Filter
+
 on:
   workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'
 
+# Исправляем ошибку 403: даем права на запись в репозиторий
+permissions:
+  contents: write
+
 jobs:
-  collect:
+  filter_vless_reality:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: pip install pyyaml requests
-
-      - name: Run Collector Script
+      - name: Проверяем исходный файл и фильтруем
         run: |
-          python - <<EOF
-          import yaml
-          import re
-          import requests
-          import base64
+          echo "Используем исходный файл: VlessLinks.txt"
+          # Твоя рабочая очистка: оставляем только vless и reality
+          # Добавляем || true, чтобы grep не прерывал работу, если совпадений 0
+          grep -iE 'vless://|reality://' VlessLinks.txt > filtered_links.txt || true
+          echo "Найдено строк: $(wc -l < filtered_links.txt)"
 
-          def get_proxies():
-              input_file = 'VlessLinks.txt'
-              proxies_list = []
-              
-              try:
-                  with open(input_file, 'r') as f:
-                      links = [line.strip() for line in f if line.strip()]
-              except FileNotFoundError:
-                  print(f"Error: {input_file} not found")
-                  return []
-
-              for link in links:
-                  # Если это ссылка на подписку (http), скачиваем содержимое
-                  if link.startswith('http'):
-                      try:
-                          resp = requests.get(link, timeout=10)
-                          if resp.status_code == 200:
-                              content = resp.text
-                              # Проверка на Base64 (часто в подписках)
-                              if not content.startswith('vless://'):
-                                  try:
-                                      content = base64.b64decode(content).decode('utf-8')
-                                  except:
-                                      pass
-                              raw_nodes = content.splitlines()
-                          else:
-                              continue
-                      except:
-                          continue
-                  else:
-                      raw_nodes = [link]
-
-                  for node in raw_nodes:
-                      node = node.strip()
-                      # Фильтруем только vless и reality
-                      if node.startswith('vless://'):
-                          # Проверка на наличие reality в ссылке (опционально)
-                          # Если нужно ВООБЩЕ все vless, оставляем так
-                          proxies_list.append(node)
-              
-              return list(set(proxies_list)) # Удаляем дубликаты
-
-          def convert_to_clash(vless_links):
-              # Упрощенная структура для Clash Proxy Provider
-              # Так как парсинг vless вручную сложен, мы сохраняем их как список
-              # Но чтобы Clash их съел, нам нужен формат 'vless'
-              # Самый надежный способ для Clash - выдать их в формате raw list
-              # который потом прогонит внутренний парсер или конвертер.
-              return "\n".join(vless_links)
-
-          nodes = get_proxies()
-          if nodes:
-              with open('all_proxies.yaml', 'w') as f:
-                  # Записываем просто список ссылок, 
-                  # но мы назовем его .yaml для совместимости с вашим конфигом
-                  f.write("\n".join(nodes))
-              print(f"Successfully collected {len(nodes)} nodes")
-          else:
-              print("No nodes found")
-          EOF
+      - name: Форматирование под Clash (YAML)
+        run: |
+          # Чтобы Clash не выдавал ошибку 'cannot unmarshal', 
+          # создаем структуру proxies: [ 'ссылка1', 'ссылка2' ]
+          echo "proxies:" > all_proxies.yaml
+          
+          # Читаем отфильтрованные ссылки и оборачиваем каждую в кавычки с отступом
+          # Это делает файл валидным YAML для Clash Proxy Provider
+          while IFS= read -r line; do
+            if [ ! -z "$line" ]; then
+              echo "  - \"$line\"" >> all_proxies.yaml
+            fi
+          done < filtered_links.txt
+          
+          echo "Форматирование завершено. Файл all_proxies.yaml готов."
 
       - name: Commit and Push
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add all_proxies.yaml
-          git commit -m "Update proxies $(date)" || exit 0
-          git push
+          
+          # Проверяем изменения, чтобы не падать на пустом коммите
+          if git diff --cached --quiet; then
+            echo "Изменений нет, пропускаем push"
+          else
+            git commit -m "Update proxies: $(date +'%Y-%m-%d %H:%M:%S')"
+            git push
+          fi
