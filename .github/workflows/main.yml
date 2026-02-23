@@ -5,7 +5,6 @@ on:
   schedule:
     - cron: '0 */6 * * *'
 
-# Исправляем 403 Forbidden
 permissions:
   contents: write
 
@@ -19,37 +18,48 @@ jobs:
 
       - name: Install Subconverter
         run: |
-          # Исправленная ссылка на скачивание архива
-          wget -O subconverter_linux64.tar.gz https://github.com
+          # Используем curl с флагом -L для корректной обработки редиректов GitHub
+          curl -L -o subconverter_linux64.tar.gz https://github.com
+          
+          # Проверка: если файл - это HTML, значит скачивание не удалось
+          if file subconverter_linux64.tar.gz | grep -q 'HTML'; then
+            echo "Ошибка: Скачан HTML вместо архива. Пробуем альтернативный метод."
+            rm subconverter_linux64.tar.gz
+            curl -L -o subconverter_linux64.tar.gz "https://github.com"
+          fi
+          
           tar -xzf subconverter_linux64.tar.gz
-          echo "Subconverter установлен"
+          echo "Subconverter распакован успешно"
 
-      - name: Проверяем исходный файл
+      - name: Filter and Format for Clash
         run: |
           echo "Используем исходный файл: VlessLinks.txt"
-          # Фильтруем vless и reality, сохраняем во временный файл
-          grep -iE 'vless://|reality://' VlessLinks.txt > VlessLinks_filtered.txt || true
-          echo "Фильтрация завершена"
-
-      - name: Generate Clash Config
-        run: |
-          # Переносим отфильтрованные ссылки в итоговый файл без лишних заголовков
-          if [ -s VlessLinks_filtered.txt ]; then
-            cat VlessLinks_filtered.txt > all_proxies.yaml
-          else
-            echo "Внимание: Фильтр ничего не нашел!"
-            touch all_proxies.yaml
-          fi
+          
+          # 1. Фильтруем только нужные протоколы
+          grep -iE 'vless://|reality://' VlessLinks.txt > filtered.txt || true
+          
+          # 2. Создаем валидный YAML формат, который Clash съест БЕЗ конвертера
+          # Это решает проблему 'cannot unmarshal'
+          echo "proxies:" > all_proxies.yaml
+          while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+              # Убираем возможные лишние пробелы и оборачиваем в кавычки
+              clean_line=$(echo "$line" | xargs)
+              echo "  - \"$clean_line\"" >> all_proxies.yaml
+            fi
+          done < filtered.txt
+          
+          echo "Файл all_proxies.yaml сформирован. Найдено узлов: $(grep -c '  - ' all_proxies.yaml)"
 
       - name: Commit and Push
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add all_proxies.yaml
-          # Проверка на наличие изменений
+          
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "Изменений нет"
           else
-            git commit -m "Update proxies $(date)"
+            git commit -m "Update proxies: $(date +'%Y-%m-%d %H:%M:%S')"
             git push
           fi
