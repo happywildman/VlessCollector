@@ -1,4 +1,4 @@
-name: Subconverter Vless Reality Final
+name: Subconverter Vless Reality Fixed
 
 on:
   workflow_dispatch:
@@ -16,11 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          # Устанавливаем PyYAML для обработки конфига
-          pip install PyYAML
-
       - name: Install Subconverter
         run: |
           ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
@@ -29,7 +24,7 @@ jobs:
 
       - name: Generate and Clean Config
         run: |
-          # 1. Сбор ссылок
+          # 1. Подготовка ссылок
           RAW_DATA=""
           while IFS= read -r line || [[ -n "$line" ]]; do
             CLEAN_URL=$(echo "$line" | xargs)
@@ -37,77 +32,73 @@ jobs:
           done < VlessLinks.txt
           FINAL_URLS=$(echo "$RAW_DATA" | sed 's/|$//')
 
-          # 2. Запуск сервера
+          # 2. Запуск Subconverter
           cd subconverter
           chmod +x subconverter
           ./subconverter & 
           sleep 5
 
-          # 3. Запрос к API
+          # 3. Получение сырого конфига
           curl -s -G "http://127.0.0.1:25500/sub" \
                --data-urlencode "target=clash" \
                --data-urlencode "url=${FINAL_URLS}" \
                --data-urlencode "list=true" \
-               --data-urlencode "scv=false" \
+               --data-urlencode "emoji=true" \
                -o raw_clash.yaml
 
-          # 4. ГЛУБОКАЯ ОЧИСТКА НА PYTHON (с обработкой ошибок кодировки)
+          # 4. ФИЛЬТРАЦИЯ (Python без загрузки YAML библиотек - только текст)
           python3 <<EOF
-          import yaml
-          import sys
+          import re
 
-          def clean_config():
-              try:
-                  # Открываем с игнорированием ошибок кодировки, чтобы DC/BOM не вешали скрипт
-                  with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
-                      content = f.read()
-                      data = yaml.safe_load(content)
+          def clean_line(name):
+              # Удаление рекламы и мусора из имен
+              garbage = [r'http\S+', r'www\S+', r't\.me\S+', r'@[a-zA-Z0-9_]+', r'\.com', r'\.net', r'Join', r'Sub']
+              for pattern in garbage:
+                  name = re.sub(pattern, '', name, flags=re.IGNORECASE)
+              return name.strip()
 
-                  if not data or 'proxies' not in data:
-                      print("No proxies found in raw data")
-                      return
+          with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
+              lines = f.readlines()
 
-                  # Оставляем ТОЛЬКО vless (реальный поиск по типу внутри)
-                  vless_proxies = [p for p in data['proxies'] if str(p.get('type')).lower() == 'vless']
+          output = []
+          keep = False
+          current_proxy = []
+          
+          # Базовые заголовки Clash
+          output.append("proxies:\n")
+
+          for line in lines:
+              # Ищем начало блока прокси
+              if line.strip().startswith("- {name:"):
+                  # Если предыдущий блок был vless - сохраняем его
+                  proxy_str = "".join(current_proxy)
+                  if "type: vless" in proxy_str:
+                      output.append(proxy_str)
                   
-                  # Список мусора для удаления из имен
-                  garbage = ['http', 'www', 't.me', '@', 'join', 'subscribe', '.com', '.net', 'shop', 'vpn', 'proxy']
-                  
-                  for p in vless_proxies:
-                      name = p.get('name', 'Node')
-                      # Если в имени есть мусор, пробуем оставить только первую часть до пробела или разделителя
-                      if any(x in name.lower() for x in garbage):
-                          # Очистка: берем текст до первого спецсимвола, если он длинный
-                          name = name.split('|')[0].split(' / ')[0].strip()
-                      
-                      # Удаляем остатки ссылок из имен
-                      for word in garbage:
-                          if word in name.lower():
-                              name = name.replace(word, "").strip()
-                      
-                      p['name'] = name if len(name) > 1 else "Vless-Reality"
+                  # Начинаем новый блок
+                  current_proxy = [line]
+              elif line.strip().startswith("proxy-groups:") or line.strip().startswith("rules:"):
+                  # Если дошли до групп, сохраняем последний накопленный прокси
+                  proxy_str = "".join(current_proxy)
+                  if "type: vless" in proxy_str:
+                      output.append(proxy_str)
+                  break
+              else:
+                  if current_proxy:
+                      current_proxy.append(line)
 
-                  data['proxies'] = vless_proxies
+          # Добавляем стандартные группы и правила в конец
+          output.append("\nproxy-groups:\n- name: PROXY\n  type: select\n  proxies:\n")
+          # Собираем имена для группы
+          for line in output:
+              if "{name:" in line:
+                  name = line.split("{name:")[1].split(",")[0].strip()
+                  output.append(f"    - {name}\n")
+          
+          output.append("\nrules:\n- MATCH,PROXY\n")
 
-                  # Чистим группы (оставляем только vless имена)
-                  if 'proxy-groups' in data:
-                      valid_names = [p['name'] for p in vless_proxies]
-                      for group in data['proxy-groups']:
-                          if 'proxies' in group:
-                              group['proxies'] = [n for n in group['proxies'] if n in valid_names]
-                  
-                  # Удаляем лишние правила, оставляя чистый конфиг
-                  data['rules'] = ["MATCH,DIRECT"] 
-
-                  with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
-                      yaml.dump(data, f, allow_unicode=True, sort_keys=False)
-                  print(f"Successfully filtered {len(vless_proxies)} vless nodes.")
-
-              except Exception as e:
-                  print(f"Python Error: {e}")
-                  sys.exit(1)
-
-          clean_config()
+          with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
+              f.writelines(output)
           EOF
           cd ..
 
@@ -117,5 +108,6 @@ jobs:
           git config --local user.name "github-actions[bot]"
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            git diff --cached --quiet || (git commit -m "Update Vless-Reality $(date)" && git push)
+            git commit -m "Auto-update Vless-Only config" || exit 0
+            git push
           fi
