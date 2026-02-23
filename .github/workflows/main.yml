@@ -1,4 +1,4 @@
-name: Collect VLESS Proxies
+name: Collect VLESS & Reality Proxies
 
 on:
   schedule:
@@ -15,9 +15,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Collect and filter VLESS
+      - name: Collect and filter VLESS & Reality
         run: |
-          SOURCE_FILE=$(ls | grep -i "links.txt" | head -n 1)
+          SOURCE_FILE=$(ls | grep -i "VlessLinks.txt" | head -n 1)
           rm -f raw.txt temp.txt
 
           while IFS= read -r url || [ -n "$url" ]; do
@@ -26,33 +26,27 @@ jobs:
 
             content=$(curl -sL --max-time 20 "$clean_url")
 
+            # decode if base64
             if echo "$content" | base64 -d >/dev/null 2>&1; then
               echo "$content" | base64 -d >> temp.txt
             else
               echo "$content" >> temp.txt
             fi
-
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          sed -i 's/vless:/\nvless:/g' temp.txt
-
-          grep -oE "vless://[a-zA-Z0-9./?#=&@:_%+-]+" temp.txt \
-          | grep "encryption=none" \
-          | grep "type=" \
-          | grep "sni=" \
-          | sort -u \
-          | head -n 2000 > raw.txt
-
+          # Extract only vless and reality, unique, limit 2000
+          grep -E "^(vless|reality)://" temp.txt | sort -u | head -n 2000 > raw.txt
           rm -f temp.txt
 
-      - name: Convert to Clash YAML
+      - name: Convert to Clash YAML via Subconverter
         run: |
+          echo "Проверка файлов перед Subconverter:"
           ls -la
           head -n 5 raw.txt
           docker run --rm -v "${PWD}:/base" tindy2013/subconverter "/base/raw.txt" "/base/all_proxies.yaml" clash
 
-      - name: Commit and push
+      - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
