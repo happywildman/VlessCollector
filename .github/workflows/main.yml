@@ -1,4 +1,4 @@
-name: Subconverter Vless Reality Final Fix
+name: Subconverter Vless Reality Filtered
 on:
   workflow_dispatch:
   schedule:
@@ -13,107 +13,115 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pyyaml
+
       - name: Install Subconverter
         run: |
-          ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
+          ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest \
+                      | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
           curl -L -o subconverter.tar.gz "$ASSET_URL"
           tar -xzf subconverter.tar.gz
+          chmod +x subconverter/subconverter
 
-      - name: Generate and Strict Clean
+      - name: Generate and Clean Vless Reality Nodes
         run: |
-          # 1. Сбор ссылок (без изменений, раз они рабочие)
+          # Проверка VlessLinks.txt
+          if [[ ! -f VlessLinks.txt ]]; then
+            echo "VlessLinks.txt not found"
+            exit 1
+          fi
+
           RAW_URLS=$(grep -v '^#' VlessLinks.txt | grep -v '^$' | tr -d '\r' | tr '\n' '|' | sed 's/|$//')
+          if [[ -z "$RAW_URLS" ]]; then
+            echo "No URLs found in VlessLinks.txt"
+            exit 1
+          fi
 
-          # 2. Запуск сервера
-          cd subconverter
-          chmod +x subconverter
-          ./subconverter & 
-          sleep 5
+          # Запуск Subconverter
+          ./subconverter/subconverter &
 
-          # 3. Запрос к API
+          # Ожидание порта
+          TIMEOUT=20
+          while ! nc -z 127.0.0.1 25500; do
+            sleep 1
+            TIMEOUT=$((TIMEOUT-1))
+            if [[ $TIMEOUT -le 0 ]]; then
+              echo "Subconverter did not start in time"
+              exit 1
+            fi
+          done
+
+          # Получение raw_clash.yaml
           curl -s -G "http://127.0.0.1:25500/sub" \
                --data-urlencode "target=clash" \
                --data-urlencode "url=${RAW_URLS}" \
                --data-urlencode "emoji=true" \
                -o raw_clash.yaml
 
-          # 4. ПИТОН-СКРИПТ (Логика прямого сканирования)
-          python3 <<EOF
+          if [[ ! -f raw_clash.yaml ]] || [[ ! -s raw_clash.yaml ]]; then
+            echo "raw_clash.yaml is empty or missing"
+            exit 1
+          fi
+
+          # Python-скрипт для фильтрации Reality
+          python3 <<'EOF'
+          import yaml
           import re
-          import os
+
+          RAW_FILE = "raw_clash.yaml"
+          OUT_FILE = "clash_config.yaml"
 
           def sanitize_name(name):
-              # Очистка имени от рекламы
               name = re.split(r'[|/@—]', str(name))[0].strip()
               name = re.sub(r'http\S+|www\S+|\.com|\.net|t\.me\S+|@[a-zA-Z0-9_]+', '', name, flags=re.IGNORECASE)
               name = "".join(c for c in name if c.isalnum() or c in " .-_()").strip()
               return name if len(name) > 1 else "Vless-Server"
 
-          if not os.path.exists('raw_clash.yaml'):
-              exit(1)
+          with open(RAW_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+              data = yaml.safe_load(f)
 
-          with open('raw_clash.yaml', 'r', encoding='utf-8', errors='ignore') as f:
-              content = f.read()
+          proxies = data.get('proxies', [])
+          cleaned_proxies = []
+          proxy_names = set()
 
-          # Находим секцию proxies
-          proxies_match = re.search(r'proxies:(.*?)(?:\n\w+:|$)', content, re.DOTALL)
-          if not proxies_match:
-              print("Proxies section not found")
-              exit(0)
-          
-          proxies_data = proxies_match.group(1)
-
-          # Логика сканера: ищем все вхождения '- name:' и захватываем до следующего '- name:'
-          # Это исключает ошибки регулярных выражений при сложных ключах Reality
-          vless_proxies = []
-          proxy_names = []
-          
-          # Находим индексы всех начал прокси
-          starts = [m.start() for m in re.finditer(r'(?:^|\n)\s*-\s*', proxies_data)]
-          
-          for i in range(len(starts)):
-              start = starts[i]
-              end = starts[i+1] if i+1 < len(starts) else len(proxies_data)
-              block = proxies_data[start:end].strip()
-              
-              if 'type: vless' in block.lower():
-                  # Извлекаем имя
-                  name_match = re.search(r'name:\s*"?([^",\n\}]+)"?', block)
-                  if name_match:
-                      old_name = name_match.group(1).strip()
+          for proxy in proxies:
+              # Только Vless Reality узлы с обязательными параметрами
+              if proxy.get('type','').lower() == 'vless' and proxy.get('server') and proxy.get('port'):
+                  # Проверка UUID/ID для Reality
+                  if proxy.get('uuid') or proxy.get('id') or proxy.get('flow') or proxy.get('ws-path'):
+                      old_name = proxy.get('name','Vless-Server')
                       new_name = sanitize_name(old_name)
-                      
-                      # Уникальность
+
                       final_name = new_name
                       count = 1
                       while final_name in proxy_names:
                           final_name = f"{new_name}-{count}"
                           count += 1
-                      
-                      # Заменяем только имя, сохраняя параметры
-                      # Важно: убираем лишние дефисы, которые могли прийти из сплита
-                      clean_node = block.replace(old_name, final_name, 1).lstrip('- ').strip()
-                      vless_proxies.append(clean_node)
-                      proxy_names.append(final_name)
 
-          # Сборка финального файла
-          with open('../clash_config.yaml', 'w', encoding='utf-8') as f:
-              f.write("proxies:\n")
-              for p in vless_proxies:
-                  f.write(f"- {p}\n")
-              
-              f.write("\nproxy-groups:\n- name: PROXY\n  type: select\n  proxies:\n")
-              if proxy_names:
-                  for name in proxy_names:
-                      f.write(f"    - {name}\n")
-              else:
-                  f.write("    - DIRECT\n")
-              
-              f.write("\nrules:\n- MATCH,PROXY\n")
-          
-          print(f"Extraction complete: {len(vless_proxies)} nodes found.")
+                      proxy['name'] = final_name
+                      cleaned_proxies.append(proxy)
+                      proxy_names.add(final_name)
+
+          final_yaml = {
+              'proxies': cleaned_proxies,
+              'proxy-groups': [
+                  {
+                      'name': 'PROXY',
+                      'type': 'select',
+                      'proxies': list(proxy_names) if proxy_names else ['DIRECT']
+                  }
+              ],
+              'rules': ['MATCH,PROXY']
+          }
+
+          with open(OUT_FILE, 'w', encoding='utf-8') as f:
+              yaml.safe_dump(final_yaml, f, allow_unicode=True, sort_keys=False)
+
+          print(f"Extraction complete: {len(cleaned_proxies)} Reality nodes found.")
           EOF
-          cd ..
 
       - name: Commit and Push
         run: |
@@ -121,6 +129,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
-            # Коммит будет создан только если есть реальные изменения
-            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Vless $(date +%H:%M)" && git push)
-          fi
+            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Vless Reality $(date +%H:%M)" && git push)
