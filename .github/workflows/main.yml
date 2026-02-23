@@ -1,9 +1,9 @@
-name: Subconverter Filter
+name: Subconverter Filter Optimized
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Позволяет запускать вручную
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */6 * * *' # Запуск каждые 6 часов
 
 permissions:
   contents: write
@@ -14,52 +14,68 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Subconverter
         run: |
-          # Используем curl с флагом -L для корректной обработки редиректов GitHub
-          curl -L -o subconverter_linux64.tar.gz https://github.com
+          # 1. Получаем URL последней версии через GitHub API для стабильности
+          ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
           
-          # Проверка: если файл - это HTML, значит скачивание не удалось
-          if file subconverter_linux64.tar.gz | grep -q 'HTML'; then
-            echo "Ошибка: Скачан HTML вместо архива. Пробуем альтернативный метод."
-            rm subconverter_linux64.tar.gz
-            curl -L -o subconverter_linux64.tar.gz "https://github.com"
+          if [ -z "$ASSET_URL" ]; then
+            echo "Ошибка: Не удалось найти ссылку на скачивание Subconverter"
+            exit 1
           fi
           
-          tar -xzf subconverter_linux64.tar.gz
-          echo "Subconverter распакован успешно"
+          echo "Скачивание Subconverter из: $ASSET_URL"
+          curl -L -o subconverter.tar.gz "$ASSET_URL"
+          
+          # 2. Распаковка архива
+          tar -xzf subconverter.tar.gz
+          echo "Распаковка завершена"
 
-      - name: Filter and Format for Clash
+      - name: Generate Clash Config
         run: |
-          echo "Используем исходный файл: VlessLinks.txt"
+          # 3. Проверка наличия входного файла и конфига
+          if [[ ! -f "VlessLinks.txt" ]]; then
+            echo "Критическая ошибка: Файл VlessLinks.txt не найден в корне репозитория!"
+            exit 1
+          fi
+
+          if [[ ! -f "generate.ini" ]]; then
+            echo "Критическая ошибка: Файл generate.ini не найден!"
+            exit 1
+          fi
+
+          # 4. Настройка прав и запуск генерации
+          chmod +x ./subconverter/subconverter
           
-          # 1. Фильтруем только нужные протоколы
-          grep -iE 'vless://|reality://' VlessLinks.txt > filtered.txt || true
+          # Запуск в режиме генерации (-g)
+          # Программа ищет generate.ini в текущей директории
+          ./subconverter/subconverter -g
           
-          # 2. Создаем валидный YAML формат, который Clash съест БЕЗ конвертера
-          # Это решает проблему 'cannot unmarshal'
-          echo "proxies:" > all_proxies.yaml
-          while IFS= read -r line; do
-            if [[ -n "$line" ]]; then
-              # Убираем возможные лишние пробелы и оборачиваем в кавычки
-              clean_line=$(echo "$line" | xargs)
-              echo "  - \"$clean_line\"" >> all_proxies.yaml
-            fi
-          done < filtered.txt
-          
-          echo "Файл all_proxies.yaml сформирован. Найдено узлов: $(grep -c '  - ' all_proxies.yaml)"
+          # 5. Верификация результата
+          if [[ -f "clash_config.yaml" ]]; then
+            echo "Успех: clash_config.yaml создан."
+            # Проверка, что файл не пустой и содержит прокси
+            NODE_COUNT=$(grep -c "name:" clash_config.yaml || echo "0")
+            echo "Найдено узлов в конфиге: $NODE_COUNT"
+          else
+            echo "Ошибка: Файл clash_config.yaml не был сгенерирован!"
+            exit 1
+          fi
 
       - name: Commit and Push
         run: |
+          # 6. Настройка Git и пуш изменений
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add all_proxies.yaml
           
+          git add clash_config.yaml
+          
+          # Проверка на наличие реальных изменений, чтобы не спамить в историю коммитов
           if git diff --cached --quiet; then
-            echo "Изменений нет"
+            echo "Изменений в конфиге нет. Пропуск коммита."
           else
-            git commit -m "Update proxies: $(date +'%Y-%m-%d %H:%M:%S')"
+            git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
             git push
           fi
