@@ -19,33 +19,33 @@ jobs:
       - name: Install Subconverter
         run: |
           ASSET_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
-          if [ -z "$ASSET_URL" ]; then exit 1; fi
           curl -L -o subconverter.tar.gz "$ASSET_URL"
           tar -xzf subconverter.tar.gz
 
       - name: Generate Clash Config
         run: |
           # 1. Проверка входных данных
-          if [[ ! -f "VlessLinks.txt" ]]; then echo "No VlessLinks.txt"; exit 1; fi
+          [[ ! -f "VlessLinks.txt" ]] && echo "No VlessLinks.txt" && exit 1
           
-          # 2. Подготовка окружения: кладем конфиги прямо к исполняемому файлу
-          cp generate.ini ./subconverter/
+          # 2. Подготовка файлов
+          # Копируем VlessLinks.txt и наш generate.ini в папку к бинарнику
           cp VlessLinks.txt ./subconverter/
+          cp generate.ini ./subconverter/
           
-          # 3. Переход в директорию и запуск
           cd subconverter
           chmod +x subconverter
           
-          echo "Запуск конвертации..."
+          # 3. Запуск конвертации
+          # Используем флаг -g для чтения generate.ini
           ./subconverter -g
           
-          # 4. Проверка появления файла именно ТАМ, где работает программа
+          # 4. Проверка и перемещение результата
           if [[ -f "clash_config.yaml" ]]; then
-            echo "Файл успешно создан внутри папки subconverter."
+            echo "УСПЕХ: Файл сгенерирован."
             cp clash_config.yaml ../
           else
-            echo "ОШИБКА: Файл clash_config.yaml не найден в $(pwd)"
-            ls -R # Вывод структуры для отладки, если опять упадет
+            echo "ОШИБКА: Файл не найден. Проверяем логи генерации..."
+            ls -lh
             exit 1
           fi
           cd ..
@@ -55,16 +55,12 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
-          # Проверяем, существует ли файл перед добавлением
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
             if git diff --cached --quiet; then
-              echo "Изменений нет"
+              echo "Изменений в конфиге нет."
             else
               git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
               git push
             fi
-          else
-            echo "Файл для коммита отсутствует."
-            exit 1
           fi
