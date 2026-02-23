@@ -24,32 +24,34 @@ jobs:
 
       - name: Generate Clash Config
         run: |
-          # 1. Проверка входных данных
-          if [[ ! -f "VlessLinks.txt" ]]; then echo "VlessLinks.txt missing"; exit 1; fi
+          # 1. Валидация входных данных
+          if [[ ! -s "VlessLinks.txt" ]]; then 
+            echo "Error: VlessLinks.txt is empty or missing!"
+            exit 1
+          fi
           
-          # 2. Подготовка рабочей директории
-          # Нам нужно, чтобы все файлы были ВНУТРИ папки subconverter
+          # 2. Подготовка чистой рабочей среды
+          # Переносим файлы во внутреннюю папку
           cp VlessLinks.txt ./subconverter/
           cp generate.ini ./subconverter/
-          cd subconverter
           
-          # Создаем пустой pref.ini, если его нет, чтобы избежать ошибок инициализации
-          touch pref.ini
+          cd subconverter
+          # УДАЛЯЕМ пустой pref.ini, если он остался от прошлых запусков
+          rm -f pref.ini
           
           chmod +x subconverter
           
           # 3. Запуск генерации
-          echo "Starting subconverter generation..."
+          echo "Starting subconverter..."
           ./subconverter -g
           
           # 4. Проверка результата
           if [[ -f "clash_config.yaml" ]]; then
-            echo "SUCCESS: clash_config.yaml created."
+            echo "SUCCESS: Config generated."
             cp clash_config.yaml ../
           else
-            echo "ERROR: clash_config.yaml not found."
-            # Если файла нет, выводим содержимое generate.ini для финальной проверки
-            cat generate.ini
+            echo "CRITICAL ERROR: clash_config.yaml was not created."
+            ls -la
             exit 1
           fi
           cd ..
@@ -62,7 +64,7 @@ jobs:
           if [[ -f "clash_config.yaml" ]]; then
             git add clash_config.yaml
             if git diff --cached --quiet; then
-              echo "No changes detected."
+              echo "No changes in config."
             else
               git commit -m "Update Clash Config: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
               git push
