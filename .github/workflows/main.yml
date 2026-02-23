@@ -18,8 +18,8 @@ jobs:
       - name: Collect all proxies
         run: |
           # Проверяем, на месте ли файл
-          if [ ! -f links.txt ]; then
-            echo "Ошибка: файл links.txt не найден в корне репозитория!"
+          if [ ! -f vlesslinks.txt ]; then
+            echo "Ошибка: файл vlesslinks.txt не найден в корне репозитория!"
             ls -R
             exit 1
           fi
@@ -27,14 +27,14 @@ jobs:
           rm -f all_proxies.txt
           touch all_proxies.txt
           
-          # Читаем файл links.txt и скачиваем содержимое
+          # Читаем файл vlesslinks.txt и скачиваем содержимое
           while IFS= read -r url || [ -n "$url" ]; do
             # Пропускаем пустые строки
             [[ -z "$url" ]] && continue
             echo "Скачиваю: $url"
             curl -sL --max-time 10 "$url" >> all_proxies.txt
             echo "" >> all_proxies.txt
-          done < links.txt
+          done < vlesslinks.txt
 
       - name: Commit and Push
         run: |
