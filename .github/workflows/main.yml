@@ -66,62 +66,94 @@ jobs:
             exit 1
           fi
 
-          # Python-скрипт для фильтрации Reality
+          # Python-скрипт для фильтрации Reality/Vless узлов
           python3 <<'EOF'
-          import yaml
-          import re
+import re
+import yaml
 
-          RAW_FILE = "raw_clash.yaml"
-          OUT_FILE = "clash_config.yaml"
+RAW_FILE = "raw_clash.yaml"
+OUT_FILE = "clash_config.yaml"
 
-          def sanitize_name(name):
-              name = re.split(r'[|/@—]', str(name))[0].strip()
-              name = re.sub(r'http\S+|www\S+|\.com|\.net|t\.me\S+|@[a-zA-Z0-9_]+', '', name, flags=re.IGNORECASE)
-              name = "".join(c for c in name if c.isalnum() or c in " .-_()").strip()
-              return name if len(name) > 1 else "Vless-Server"
+def sanitize_name(name):
+    name = re.split(r'[|/@—]', str(name))[0].strip()
+    name = re.sub(r'http\S+|www\S+|\.com|\.net|t\.me\S+|@[a-zA-Z0-9_]+', '', name, flags=re.IGNORECASE)
+    name = "".join(c for c in name if c.isalnum() or c in " .-_()").strip()
+    return name if len(name) > 1 else "Vless-Server"
 
-          with open(RAW_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-              data = yaml.safe_load(f)
+with open(RAW_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+    content = f.read()
 
-          proxies = data.get('proxies', [])
-          cleaned_proxies = []
-          proxy_names = set()
+# Вытаскиваем секцию proxies через regex
+proxies_raw_match = re.search(r'proxies:\s*(\[[\s\S]*?\])', content)
+if not proxies_raw_match:
+    print("No proxies section found")
+    exit(1)
 
-          for proxy in proxies:
-              # Только Vless Reality узлы с обязательными параметрами
-              if proxy.get('type','').lower() == 'vless' and proxy.get('server') and proxy.get('port'):
-                  # Проверка UUID/ID для Reality
-                  if proxy.get('uuid') or proxy.get('id') or proxy.get('flow') or proxy.get('ws-path'):
-                      old_name = proxy.get('name','Vless-Server')
-                      new_name = sanitize_name(old_name)
+proxies_raw = proxies_raw_match.group(1)
 
-                      final_name = new_name
-                      count = 1
-                      while final_name in proxy_names:
-                          final_name = f"{new_name}-{count}"
-                          count += 1
+try:
+    proxy_list = yaml.safe_load(proxies_raw)
+except:
+    print("Proxy list parsing failed")
+    exit(1)
 
-                      proxy['name'] = final_name
-                      cleaned_proxies.append(proxy)
-                      proxy_names.add(final_name)
+cleaned = []
+names = set()
+server_port_seen = set()
 
-          final_yaml = {
-              'proxies': cleaned_proxies,
-              'proxy-groups': [
-                  {
-                      'name': 'PROXY',
-                      'type': 'select',
-                      'proxies': list(proxy_names) if proxy_names else ['DIRECT']
-                  }
-              ],
-              'rules': ['MATCH,PROXY']
-          }
+for proxy in proxy_list:
+    try:
+        if proxy.get('type','').lower() != 'vless':
+            continue
 
-          with open(OUT_FILE, 'w', encoding='utf-8') as f:
-              yaml.safe_dump(final_yaml, f, allow_unicode=True, sort_keys=False)
+        server = proxy.get('server')
+        port = proxy.get('port')
+        if not server or not port:
+            continue
 
-          print(f"Extraction complete: {len(cleaned_proxies)} Reality nodes found.")
-          EOF
+        # Reality check: хотя бы один ключ специфичный для Reality
+        if not any(k in proxy for k in ['uuid', 'id', 'flow', 'ws-path']):
+            continue
+
+        # Убираем дубликаты server:port
+        key = f"{server}:{port}"
+        if key in server_port_seen:
+            continue
+        server_port_seen.add(key)
+
+        old_name = proxy.get('name','Vless-Server')
+        new_name = sanitize_name(old_name)
+
+        final_name = new_name
+        i = 1
+        while final_name in names:
+            final_name = f"{new_name}-{i}"
+            i += 1
+
+        proxy['name'] = final_name
+        names.add(final_name)
+        cleaned.append(proxy)
+
+    except:
+        continue
+
+final_yaml = {
+    'proxies': cleaned,
+    'proxy-groups': [
+        {
+            'name': 'PROXY',
+            'type': 'select',
+            'proxies': list(names) if names else ['DIRECT']
+        }
+    ],
+    'rules': ['MATCH,PROXY']
+}
+
+with open(OUT_FILE, 'w', encoding='utf-8') as f:
+    yaml.safe_dump(final_yaml, f, allow_unicode=True, sort_keys=False)
+
+print(f"Valid Vless Reality nodes: {len(cleaned)}")
+EOF
 
       - name: Commit and Push
         run: |
