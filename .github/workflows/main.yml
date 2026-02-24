@@ -48,7 +48,7 @@ jobs:
             | grep -v " " \
             | awk 'length($0) > 40 && length($0) < 1200' \
             | sort -u \
-            | head -n 30000 \
+            | head -n 10000 \
             | sed 's/^/  - /' >> all_proxies.yaml
 
           rm -f temp.txt
@@ -68,6 +68,7 @@ jobs:
 
           sed '1d' all_proxies.yaml | while IFS= read -r line || [ -n "$line" ]; do
             url="${line#  - }"
+            [[ -z "$url" ]] && continue
 
             uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
             server=$(echo "$url" | sed -n 's#vless://[^@]*@\([^:]*\):.*#\1#p')
