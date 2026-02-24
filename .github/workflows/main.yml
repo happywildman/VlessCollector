@@ -31,7 +31,7 @@ jobs:
           echo "proxies:" > all_proxies.yaml
 
           while IFS= read -r url || [ -n "$url" ]; do
-            clean_url=$(echo "$url" | tr -d '\r')
+            clean_url=$(echo "$url" | tr -d '\r' | tr -d '"' | xargs)
             [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
             curl -fsSL --max-time 15 "$clean_url" >> temp.txt || true
             echo "" >> temp.txt
@@ -58,14 +58,6 @@ jobs:
           set -e
           echo "proxies:" > clash.yaml
 
-          escape_yaml() {
-            local str="$1"
-            str="${str//\\/\\\\}"
-            str="${str//\"/\\\"}"
-            str="${str//\$/\\$}"
-            echo "$str"
-          }
-
           tail -n +2 all_proxies.yaml | while IFS= read -r line; do
             url="${line#  - }"
             [[ -z "$url" ]] && continue
@@ -81,10 +73,6 @@ jobs:
             [ -z "$server" ] && continue
             [ -z "$port" ] && continue
             [ -z "$network" ] && network="tcp"
-
-            uuid=$(escape_yaml "$uuid")
-            host=$(escape_yaml "$host")
-            path=$(escape_yaml "$path")
 
             # Ограничение длины пути для Mihomo
             if [ ${#path} -gt 255 ]; then
