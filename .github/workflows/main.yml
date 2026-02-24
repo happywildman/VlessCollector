@@ -32,7 +32,6 @@ jobs:
 
           echo "proxies:" > all_proxies.yaml
 
-          # Счетчик для отслеживания прогресса
           count=0
           total_urls=$(grep -v '^#' "$SOURCE_FILE" | grep -v '^$' | wc -l)
           echo "Found $total_urls URLs to process"
@@ -86,6 +85,27 @@ jobs:
             echo "$decoded"
           }
 
+          # Функция для очистки имени от спецсимволов
+          clean_name() {
+            local name="$1"
+            # Оставляем только буквы, цифры, точки и дефисы
+            echo "$name" | sed 's/[^a-zA-Z0-9.-]//g'
+          }
+
+          # Функция для проверки валидности домена/IP
+          is_valid_server() {
+            local server="$1"
+            # Проверка на IP адрес
+            if echo "$server" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null; then
+              return 0
+            fi
+            # Проверка на домен (простая проверка)
+            if echo "$server" | grep -E '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' > /dev/null; then
+              return 0
+            fi
+            return 1
+          }
+
           # Создаем временный файл для отслеживания уникальных прокси
           > /tmp/unique_proxies.txt
 
@@ -123,6 +143,11 @@ jobs:
               continue
             fi
 
+            # Проверяем валидность сервера (IP или домен)
+            if ! is_valid_server "$server"; then
+              continue
+            fi
+
             # Создаем уникальный ключ (server:port:uuid)
             proxy_key="${server}:${port}:${uuid}"
             
@@ -138,6 +163,9 @@ jobs:
             network="tcp"
             host=""
             path=""
+            flow=""
+            security="none"
+            sni=""
             
             # Парсим параметры
             if [ -n "$query" ]; then
@@ -148,13 +176,22 @@ jobs:
                   "type") network="$value" ;;
                   "host") host="$value" ;;
                   "path") path="$value" ;;
+                  "flow") flow="$value" ;;
+                  "security") security="$value" ;;
+                  "sni") sni="$value" ;;
                 esac
               done
             fi
 
-            # Создаем уникальное имя (добавляем первые символы UUID для уникальности)
+            # Создаем уникальное имя (очищаем от спецсимволов)
             uuid_short=$(echo "$uuid" | cut -c1-8)
-            name="${server}-${port}-${uuid_short}"
+            raw_name="${server}-${port}-${uuid_short}"
+            name=$(clean_name "$raw_name")
+            
+            # Если имя пустое после очистки, создаем запасной вариант
+            if [ -z "$name" ]; then
+              name="proxy-${server}-${port}"
+            fi
 
             # Записываем в файл
             {
@@ -167,6 +204,19 @@ jobs:
               echo "    tls: false"
               echo "    udp: true"
             } >> clash.yaml
+
+            # Добавляем TLS если нужно
+            if [ "$security" = "tls" ] || [ "$security" = "reality" ]; then
+              sed -i '$ s/tls: false/tls: true/' clash.yaml
+              if [ -n "$sni" ]; then
+                echo "    sni: \"$sni\"" >> clash.yaml
+              fi
+            fi
+
+            # Добавляем flow параметры для XTLS
+            if [ -n "$flow" ]; then
+              echo "    flow: \"$flow\"" >> clash.yaml
+            fi
 
             # Добавляем WebSocket параметры если есть
             if [ "$network" = "ws" ] && [ -n "$path" ]; then
@@ -194,11 +244,17 @@ jobs:
       - name: Show Sample
         run: |
           echo "=== FIRST 3 PROXIES ==="
-          head -n 30 clash.yaml | grep -A 7 "^- name:" | head -n 24
+          head -n 30 clash.yaml | grep -A 8 "^- name:" | head -n 27
           
           echo ""
-          echo "=== UUID EXAMPLE ==="
-          grep "uuid:" clash.yaml | head -n 1
+          echo "=== STATISTICS ==="
+          echo "Total proxies: $(grep -c '^- name:' clash.yaml || echo 0)"
+          echo "Total unique servers: $(grep 'server:' clash.yaml | sort -u | wc -l)"
+          
+          echo ""
+          echo "=== SERVER TYPES ==="
+          echo "IP addresses: $(grep 'server:' clash.yaml | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | wc -l)"
+          echo "Domains: $(grep 'server:' clash.yaml | grep -v -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | wc -l)"
 
       - name: Commit and Push
         run: |
