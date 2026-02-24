@@ -1,77 +1,30 @@
-      - name: Generate Clash.yaml (Full & Clean)
+name: Generate Clash Config
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          set -e
-          python3 <<EOF
-import yaml
-import re
-from urllib.parse import urlparse, parse_qs, unquote
+          python -m pip install --upgrade pip
+          pip install pyyaml requests
 
-# Загружаем исходные прокси
-with open("all_proxies.yaml", "r", encoding="utf-8") as f:
-    data = yaml.safe_load(f)
-
-seen = set()
-clash_proxies = []
-
-for item in data.get("proxies", []):
-    if not item.strip().startswith("-"):
-        continue
-
-    url = item.strip()[2:]
-    if not url.startswith("vless://"):
-        continue
-
-    parsed = urlparse(url)
-
-    if not parsed.hostname or not parsed.port:
-        continue
-
-    uuid = unquote(parsed.username or "")
-    server = parsed.hostname
-    port = parsed.port
-
-    # Фильтр слишком коротких или мусорных UUID
-    if len(uuid) < 6:
-        continue
-
-    query = parse_qs(parsed.query)
-    network = query.get("type", ["tcp"])[0]
-    path = unquote(query.get("path", [""])[0])
-    host = unquote(query.get("host", [""])[0])
-
-    # Избегаем дубликатов
-    key = f"{server}_{port}_{uuid}_{network}"
-    if key in seen:
-        continue
-    seen.add(key)
-
-    # Структура прокси для Clash
-    proxy = {
-        "name": f"{server}-{port}",
-        "type": "vless",
-        "server": server,
-        "port": port,
-        "uuid": uuid,
-        "network": network,
-        "tls": False,
-        "udp": True
-    }
-
-    # WebSocket опции
-    if network == "ws":
-        ws_opts = {"path": path}
-        if host:
-            ws_opts["headers"] = {"Host": host}
-        proxy["ws-opts"] = ws_opts
-
-    clash_proxies.append(proxy)
-
-# Сохраняем готовый clash.yaml
-with open("clash.yaml", "w", encoding="utf-8") as f:
-    yaml.dump(
-        {"proxies": clash_proxies},
-        f,
-        allow_unicode=True,
-        sort_keys=False
-    )
-EOF
+      - name: Generate Clash.yaml
+        run: |
+          python scripts/generate_clash.py
