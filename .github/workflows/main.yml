@@ -1,30 +1,76 @@
-name: Generate Clash Config
+- name: Generate Clash.yaml (Full & Clean)
+  run: |
+    set -e
+    python3 <<EOF
+import yaml
+import re
+from urllib.parse import urlparse, parse_qs, unquote
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+# Загружаем исходные прокси
+with open("all_proxies.yaml", "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f)
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+seen = set()
+clash_proxies = []
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+for item in data.get("proxies", []):
+    # Поддержка как строк, так и словарей с ключом "url"
+    url = item if isinstance(item, str) else item.get("url", "")
+    if not url.startswith("vless://"):
+        continue
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml requests
+    parsed = urlparse(url)
+    server = parsed.hostname
+    port = parsed.port
+    uuid = unquote(parsed.username or "")
 
-      - name: Generate Clash.yaml
-        run: |
-          python scripts/generate_clash.py
+    # Фильтр некорректных записей
+    if not server or not port or len(uuid) < 6:
+        continue
+
+    query = parse_qs(parsed.query)
+    network = query.get("type", ["tcp"])[0]
+    path = unquote(query.get("path", [""])[0])
+    host = unquote(query.get("host", [""])[0])
+
+    # Избегаем дубликатов
+    key = f"{server}_{port}_{uuid}_{network}_{path}_{host}"
+    if key in seen:
+        continue
+    seen.add(key)
+
+    # Имя прокси
+    name = item if isinstance(item, str) else item.get("name")
+    if not name:
+        name = f"{server}-{port}"
+
+    # Структура прокси для Clash
+    proxy = {
+        "name": name,
+        "type": "vless",
+        "server": server,
+        "port": port,
+        "uuid": uuid,
+        "network": network,
+        "tls": False,
+        "udp": True
+    }
+
+    # WebSocket опции
+    if network == "ws":
+        ws_opts = {"path": path or "/"}
+        if host:
+            ws_opts["headers"] = {"Host": host}
+        proxy["ws-opts"] = ws_opts
+
+    clash_proxies.append(proxy)
+
+# Сохраняем готовый clash.yaml
+with open("clash.yaml", "w", encoding="utf-8") as f:
+    yaml.dump(
+        {"proxies": clash_proxies},
+        f,
+        allow_unicode=True,
+        sort_keys=False
+    )
+EOF
