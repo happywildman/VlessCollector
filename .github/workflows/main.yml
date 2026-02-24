@@ -37,10 +37,8 @@ jobs:
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          # Разделяем строки с vless
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Фильтруем рабочие VLESS для clash
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
@@ -55,29 +53,28 @@ jobs:
 
           rm -f temp.txt
 
-      - name: Convert VLESS URLs to Clash Format
+      # ---------- НОВЫЙ STEP (RAW -> CLASH) ----------
+      - name: Generate Clash Config
         run: |
           set -e
 
-          INPUT="all_proxies.yaml"
-          OUTPUT="clash_proxies.yaml"
+          RAW="all_proxies.yaml"
+          OUT="clash.yaml"
 
-          echo "proxies:" > $OUTPUT
+          echo "proxies:" > "$OUT"
 
-          grep -oE 'vless://[^[:space:]]+' "$INPUT" | while read -r link; do
+          # Читаем только строки с vless
+          while IFS= read -r line; do
 
-            # Удаляем часть после #
+            link="${line#  - }"
+            [ -z "$link" ] && continue
+
             base="${link%%#*}"
-
-            # Убираем префикс
             clean="${base#vless://}"
 
-            # UUID
             uuid="${clean%%@*}"
-
             rest="${clean#*@}"
 
-            # Server и Port
             host_port="${rest%%\?*}"
 
             if [[ "$host_port" =~ \[(.*)\]:(.*) ]]; then
@@ -88,53 +85,59 @@ jobs:
               port="${host_port##*:}"
             fi
 
-            # Параметры
             params=""
-            if [[ "$rest" == *\?* ]]; then
-              params="${rest#*\?}"
-            fi
+            [[ "$rest" == *\?* ]] && params="${rest#*\?}"
 
-            type=$(echo "$params" | tr '&' '\n' | grep '^type=' | cut -d '=' -f2 || true)
-            security=$(echo "$params" | tr '&' '\n' | grep '^security=' | cut -d '=' -f2 || true)
-            host=$(echo "$params" | tr '&' '\n' | grep '^host=' | cut -d '=' -f2 || true)
-            path=$(echo "$params" | tr '&' '\n' | grep '^path=' | cut -d '=' -f2 || true)
-            sni=$(echo "$params" | tr '&' '\n' | grep '^sni=' | cut -d '=' -f2 || true)
+            network="tcp"
+            tls="false"
+            host=""
+            path=""
+            sni=""
 
-            [ -z "$type" ] && type="tcp"
-            [ "$security" = "tls" ] && tls="true" || tls="false"
+            IFS='&' read -ra kv <<< "$params"
+            for pair in "${kv[@]}"; do
+              key="${pair%%=*}"
+              val="${pair#*=}"
+
+              case "$key" in
+                type) network="$val" ;;
+                security) [ "$val" = "tls" ] && tls="true" ;;
+                host) host="$val" ;;
+                path) path="$val" ;;
+                sni) sni="$val" ;;
+              esac
+            done
 
             name="${server}-${port}"
 
-            echo "  - name: \"$name\"" >> $OUTPUT
-            echo "    type: vless" >> $OUTPUT
-            echo "    server: \"$server\"" >> $OUTPUT
-            echo "    port: $port" >> $OUTPUT
-            echo "    uuid: \"$uuid\"" >> $OUTPUT
-            echo "    network: \"$type\"" >> $OUTPUT
-            echo "    tls: $tls" >> $OUTPUT
-            echo "    udp: true" >> $OUTPUT
+            {
+              echo "  - name: \"$name\""
+              echo "    type: vless"
+              echo "    server: \"$server\""
+              echo "    port: $port"
+              echo "    uuid: \"$uuid\""
+              echo "    network: \"$network\""
+              echo "    tls: $tls"
+              echo "    udp: true"
+            } >> "$OUT"
 
-            if [ "$type" = "ws" ]; then
-              echo "    ws-opts:" >> $OUTPUT
-              [ -n "$path" ] && echo "      path: \"$path\"" >> $OUTPUT
+            if [ "$network" = "ws" ]; then
+              echo "    ws-opts:" >> "$OUT"
+              [ -n "$path" ] && echo "      path: \"$path\"" >> "$OUT"
               if [ -n "$host" ]; then
-                echo "      headers:" >> $OUTPUT
-                echo "        Host: \"$host\"" >> $OUTPUT
+                echo "      headers:" >> "$OUT"
+                echo "        Host: \"$host\"" >> "$OUT"
               fi
             fi
 
-            if [ -n "$sni" ]; then
-              echo "    servername: \"$sni\"" >> $OUTPUT
-            fi
+            [ -n "$sni" ] && echo "    servername: \"$sni\"" >> "$OUT"
 
-          done
-
-          mv $OUTPUT all_proxies.yaml
+          done < <(grep '^  - vless://' "$RAW")
 
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add all_proxies.yaml
+          git add all_proxies.yaml clash.yaml
           git commit -m "Update proxies $(date)" || exit 0
           git push
