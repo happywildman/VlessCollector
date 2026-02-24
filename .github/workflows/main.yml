@@ -2,13 +2,13 @@ name: Collect Proxies
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       contents: write
 
@@ -71,197 +71,129 @@ jobs:
           echo "Collection completed at $(date)"
           echo "Found $(grep -c 'vless://' all_proxies.yaml || echo 0) proxies"
 
-      - name: Generate clash.yaml with GeoIP + Live Testing
+      - name: Generate clash.yaml (Mihomo Format)
         run: |
           set -e
-          echo "Starting generation with live testing and GeoIP at $(date)"
+          echo "Starting generation at $(date)"
+          echo "proxies:" > clash.yaml
           
-          # ===== УСТАНОВКА ИНСТРУМЕНТОВ =====
-          sudo apt-get update
-          sudo apt-get install -y mmdb-bin jq bc
-          
-          # ===== ЗАГРУЗКА GEOIP БАЗЫ =====
-          echo "Downloading GeoLite2 database..."
-          mkdir -p geoip
-          
-          MIRRORS=(
-            "https://github.com/PrxyHunter/GeoLite2/releases/latest/download/GeoLite2-Country.mmdb"
-            "https://github.com/Skiddle-ID/geoip2-mirror/releases/latest/download/GeoLite2-Country.mmdb"
-          )
-          
-          DOWNLOADED=false
-          for mirror in "${MIRRORS[@]}"; do
-            if curl -L --fail --max-time 30 -o geoip/GeoLite2-Country.mmdb "$mirror" 2>/dev/null; then
-              echo "✅ Successfully downloaded GeoIP database"
-              DOWNLOADED=true
-              break
-            fi
-          done
-          
-          # ===== ФУНКЦИИ =====
-          # Декодирование URL
+          # Функция для декодирования процентного кодирования
           urldecode() {
             local data="$1"
+            # Декодируем %NN в символы
             decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
             echo "$decoded"
           }
 
-          # ОЧИСТКА UUID ОТ ЭМОДЗИ И СПЕЦСИМВОЛОВ
-          clean_uuid() {
-            local raw_uuid="$1"
-            # Удаляем все, кроме латинских букв, цифр, дефисов, @ и точки
-            echo "$raw_uuid" | sed 's/[^a-zA-Z0-9@.\-]//g'
-          }
-
-          # Безопасная очистка имени
+          # Функция для очистки имени от спецсимволов
           clean_name() {
-            echo "$1" | sed 's/[^a-zA-Z0-9.-]//g'
+            local name="$1"
+            # Оставляем только буквы, цифры, точки и дефисы
+            echo "$name" | sed 's/[^a-zA-Z0-9.-]//g'
           }
 
-          # Получение страны
-          get_country() {
-            local ip=$1
-            
-            if [ ! -f "geoip/GeoLite2-Country.mmdb" ]; then
-              echo "XX"
-              return
+          # Функция для проверки валидности домена/IP
+          is_valid_server() {
+            local server="$1"
+            # Проверка на IP адрес
+            if echo "$server" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null; then
+              return 0
             fi
-            
-            if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              country=$(mmdblookup --file geoip/GeoLite2-Country.mmdb --ip "$ip" country iso_code 2>/dev/null | \
-                        tr -d ' "' | grep -v '^$' | head -1)
-              echo "${country:-XX}"
-            else
-              echo "WW"
+            # Проверка на домен (простая проверка)
+            if echo "$server" | grep -E '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' > /dev/null; then
+              return 0
             fi
+            return 1
           }
 
-          # Проверка прокси
-          test_proxy() {
-            local server=$1
-            local port=$2
-            local test_url=$3
-            
-            curl --socks5-hostname "$server:$port" \
-                 -s -o /dev/null -w "%{http_code}" \
-                 --max-time 5 \
-                 "$test_url" 2>/dev/null | grep -q "200\|204"
-          }
+          # Создаем временный файл для отслеживания уникальных прокси
+          > /tmp/unique_proxies.txt
 
-          # ===== ПОДГОТОВКА =====
-          printf "proxies:\n" > clash.yaml
-          > /tmp/valid_proxies.txt
-          
-          TEST_URLS=(
-            "http://www.gstatic.com/generate_204"
-            "http://cp.cloudflare.com/generate_204"
-          )
-          
-          # ===== ОСНОВНОЙ ЦИКЛ =====
-          total=0
-          valid=0
-          
+          # Считаем количество прокси для обработки
+          total_proxies=$(grep -c '^-' all_proxies.yaml || echo 0)
+          echo "Processing $total_proxies proxies"
+          current=0
+
+          # Читаем файл построчно
           while IFS= read -r line || [ -n "$line" ]; do
+            # Пропускаем первую строку "proxies:"
             [[ "$line" == "proxies:" ]] && continue
             
             url="${line#  - }"
             [[ -z "$url" ]] && continue
-            
-            total=$((total + 1))
-            
-            # Парсинг URL
+
+            current=$((current + 1))
+            if [ $((current % 100)) -eq 0 ]; then
+              echo "Processed $current/$total_proxies proxies"
+            fi
+
+            # Извлекаем UUID (до @)
             uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
-            uuid_raw=$(urldecode "$uuid_encoded")
             
-            # ОЧИСТКА UUID ОТ ЭМОДЗИ
-            uuid=$(clean_uuid "$uuid_raw")
+            # Декодируем UUID из процентного формата
+            uuid=$(urldecode "$uuid_encoded")
             
+            # Извлекаем server и port
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
             server=$(echo "$server_port" | cut -d: -f1)
             port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
             
+            # Проверяем что все обязательные поля есть
             if [ -z "$uuid" ] || [ -z "$server" ] || [ -z "$port" ]; then
               continue
             fi
-            
-            # Проверка живости
-            proxy_ok=false
-            for test_url in "${TEST_URLS[@]}"; do
-              if test_proxy "$server" "$port" "$test_url"; then
-                proxy_ok=true
-                break
-              fi
-              sleep 0.2
-            done
-            
-            if [ "$proxy_ok" = true ]; then
-              echo "$url" >> /tmp/valid_proxies.txt
-              valid=$((valid + 1))
+
+            # Проверяем валидность сервера (IP или домен)
+            if ! is_valid_server "$server"; then
+              continue
             fi
+
+            # Создаем уникальный ключ (server:port:uuid)
+            proxy_key="${server}:${port}:${uuid}"
             
-            sleep 0.3
-            
-          done < all_proxies.yaml
-          
-          # ===== ГЕНЕРАЦИЯ ФИНАЛЬНОГО YAML =====
-          echo "Generating clash.yaml with $valid working proxies..."
-          current=0
-          
-          while IFS= read -r url || [ -n "$url" ]; do
-            current=$((current + 1))
-            
-            # Парсинг URL
-            uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
-            uuid_raw=$(urldecode "$uuid_encoded")
-            
-            # ОЧИСТКА UUID ОТ ЭМОДЗИ
-            uuid=$(clean_uuid "$uuid_raw")
-            
-            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
-            server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
-            
+            # Проверяем дубликаты
+            if grep -q "^${proxy_key}$" /tmp/unique_proxies.txt 2>/dev/null; then
+              continue
+            fi
+            echo "$proxy_key" >> /tmp/unique_proxies.txt
+
+            # Извлекаем параметры
             query=$(echo "$url" | sed -n 's/.*?\(.*\)#.*/\1/p; s/.*?\(.*\)/\1/p')
             
             network="tcp"
             host=""
             path=""
+            flow=""
+            security="none"
+            sni=""
             
+            # Парсим параметры
             if [ -n "$query" ]; then
               echo "$query" | tr '&' '\n' | while IFS='=' read -r key value; do
+                # Декодируем значение параметра если нужно
                 value=$(urldecode "$value")
                 case "$key" in
                   "type") network="$value" ;;
                   "host") host="$value" ;;
                   "path") path="$value" ;;
+                  "flow") flow="$value" ;;
+                  "security") security="$value" ;;
+                  "sni") sni="$value" ;;
                 esac
               done
             fi
-            
-            # Получаем страну
-            country=$(get_country "$server")
-            
-            # Выбираем эмодзи для флага
-            case "$country" in
-              "RU") flag="🇷🇺" ;;
-              "US") flag="🇺🇸" ;;
-              "NL") flag="🇳🇱" ;;
-              "DE") flag="🇩🇪" ;;
-              "FR") flag="🇫🇷" ;;
-              "GB") flag="🇬🇧" ;;
-              "CA") flag="🇨🇦" ;;
-              "SG") flag="🇸🇬" ;;
-              "JP") flag="🇯🇵" ;;
-              "KR") flag="🇰🇷" ;;
-              "WW") flag="🌍" ;;
-              *) flag="🏁" ;;
-            esac
-            
-            # Создаем имя (очищенное)
-            raw_name="${flag}${current}-${server}-${port}"
+
+            # Создаем уникальное имя (очищаем от спецсимволов)
+            uuid_short=$(echo "$uuid" | cut -c1-8)
+            raw_name="${server}-${port}-${uuid_short}"
             name=$(clean_name "$raw_name")
             
-            # Запись в YAML
+            # Если имя пустое после очистки, создаем запасной вариант
+            if [ -z "$name" ]; then
+              name="proxy-${server}-${port}"
+            fi
+
+            # Записываем в файл
             {
               echo "  - name: \"$name\""
               echo "    type: vless"
@@ -272,44 +204,57 @@ jobs:
               echo "    tls: false"
               echo "    udp: true"
             } >> clash.yaml
-            
+
+            # Добавляем TLS если нужно
+            if [ "$security" = "tls" ] || [ "$security" = "reality" ]; then
+              sed -i '$ s/tls: false/tls: true/' clash.yaml
+              if [ -n "$sni" ]; then
+                echo "    sni: \"$sni\"" >> clash.yaml
+              fi
+            fi
+
+            # Добавляем flow параметры для XTLS
+            if [ -n "$flow" ]; then
+              echo "    flow: \"$flow\"" >> clash.yaml
+            fi
+
+            # Добавляем WebSocket параметры если есть
             if [ "$network" = "ws" ] && [ -n "$path" ]; then
-              path_clean=$(echo "$path" | sed 's/[^a-zA-Z0-9\/._-]//g')
               {
                 echo "    ws-opts:"
-                echo "      path: \"$path_clean\""
+                echo "      path: \"$path\""
               } >> clash.yaml
+              
               if [ -n "$host" ]; then
-                host_clean=$(echo "$host" | sed 's/[^a-zA-Z0-9._-]//g')
                 {
                   echo "      headers:"
-                  echo "        Host: \"$host_clean\""
+                  echo "        Host: \"$host\""
                 } >> clash.yaml
               fi
             fi
-            
-          done < /tmp/valid_proxies.txt
+
+          done < all_proxies.yaml
+
+          # Очищаем временные файлы
+          rm -f /tmp/unique_proxies.txt
           
-          # ===== ФИНАЛЬНАЯ ОЧИСТКА =====
-          echo "Performing final YAML cleanup..."
+          echo "Generation completed at $(date)"
+          echo "Generated $(grep -c '^- name:' clash.yaml || echo 0) unique proxies"
+
+      - name: Show Sample
+        run: |
+          echo "=== FIRST 3 PROXIES ==="
+          head -n 30 clash.yaml | grep -A 8 "^- name:" | head -n 27
           
-          # Удаляем пустые строки
-          sed -i '/^[[:space:]]*$/d' clash.yaml
-          
-          # Проверяем наличие BOM
-          if head -1 clash.yaml | grep -q $'\xEF\xBB\xBF'; then
-            echo "Removing BOM marker..."
-            sed -i '1s/^\xEF\xBB\xBF//' clash.yaml
-          fi
-          
-          # Статистика
           echo ""
-          echo "=== СТАТИСТИКА ==="
-          echo "Всего проверено: $total"
-          echo "✅ Рабочих: $valid"
-          echo "❌ Мертвых: $((total - valid))"
+          echo "=== STATISTICS ==="
+          echo "Total proxies: $(grep -c '^- name:' clash.yaml || echo 0)"
+          echo "Total unique servers: $(grep 'server:' clash.yaml | sort -u | wc -l)"
+          
           echo ""
-          echo "✅ Generation complete! Generated $(grep -c "^- name:" clash.yaml) proxies"
+          echo "=== SERVER TYPES ==="
+          echo "IP addresses: $(grep 'server:' clash.yaml | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | wc -l)"
+          echo "Domains: $(grep 'server:' clash.yaml | grep -v -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | wc -l)"
 
       - name: Commit and Push
         run: |
@@ -322,6 +267,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all_proxies.yaml clash.yaml
-          git commit -m "Update proxies $(date) - $valid working"
+          git commit -m "Update proxies $(date)"
           git push
           echo "Changes pushed successfully"
