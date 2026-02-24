@@ -44,7 +44,6 @@ jobs:
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
             | grep -v "127.0.0.1" \
             | grep -v "🔒" \
-            | grep -v "tls" \
             | grep -v " " \
             | awk 'length($0) > 40 && length($0) < 1200' \
             | sort -u \
@@ -53,104 +52,63 @@ jobs:
 
           rm -f temp.txt
 
-      - name: Generate Clash Config
+      - name: Normalize for Mihomo Clash (DEDUP SAFE)
         run: |
           set -e
 
-          RAW="all_proxies.yaml"
-          OUT="clash.yaml"
+          INPUT_FILE="all_proxies.yaml"
+          OUTPUT_FILE="clash.yaml"
+          TEMP_KEYS="keys.tmp"
 
-          echo "proxies:" > "$OUT"
+          echo "proxies:" > "$OUTPUT_FILE"
+          rm -f "$TEMP_KEYS"
 
-          if ! grep -q '^  - vless://' "$RAW"; then
-            echo "No valid VLESS entries found."
-            exit 0
-          fi
+          urldecode() { python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.argv[1]))" "$1"; }
 
-          while IFS= read -r line; do
+          awk '/vless:\/\// {print $0}' "$INPUT_FILE" | while read -r line; do
 
-            link="${line#  - }"
-            [ -z "$link" ] && continue
+            parsed=$(echo "$line" | sed -E 's|vless://([^@]+)@([^:/]+):([0-9]+).*|\1|\2|\3|')
 
-            base="${link%%#*}"
-            clean="${base#vless://}"
+            uuid_enc=$(echo "$parsed" | cut -d'|' -f1)
+            server=$(echo "$parsed" | cut -d'|' -f2)
+            port=$(echo "$parsed" | cut -d'|' -f3 | sed 's|/||')
 
-            uuid="${clean%%@*}"
-            rest="${clean#*@}"
-            host_port="${rest%%\?*}"
+            uuid=$(urldecode "$uuid_enc")
 
-            if [[ "$host_port" =~ \[(.*)\]:(.*) ]]; then
-              server="${BASH_REMATCH[1]}"
-              port="${BASH_REMATCH[2]}"
-            else
-              server="${host_port%%:*}"
-              port="${host_port##*:}"
+            network=$(echo "$line" | grep -oP '(?<=\?type=)[^&]+' || echo "tcp")
+            path=$(echo "$line" | grep -oP '(?<=path=)[^&]+' || echo "")
+            host=$(echo "$line" | grep -oP '(?<=host=)[^&]+' || echo "")
+
+            key="${server}_${port}_${uuid}_${network}"
+
+            # Пропускаем если уже есть
+            if grep -qx "$key" "$TEMP_KEYS" 2>/dev/null; then
+              continue
             fi
 
-            params=""
-            [[ "$rest" == *\?* ]] && params="${rest#*\?}"
+            echo "$key" >> "$TEMP_KEYS"
 
-            network="tcp"
-            tls="false"
-            host=""
-            path=""
-            sni=""
-            pbk=""
-            sid=""
-            fp=""
-
-            IFS='&' read -ra kv <<< "$params"
-            for pair in "${kv[@]}"; do
-              key="${pair%%=*}"
-              val="${pair#*=}"
-
-              case "$key" in
-                type) network="$val" ;;
-                security) [ "$val" = "tls" ] && tls="true"
-                          [ "$val" = "reality" ] && tls="true" ;;
-                host) host="$val" ;;
-                path) path="$val" ;;
-                sni) sni="$val" ;;
-                pbk) pbk="$val" ;;
-                sid) sid="$val" ;;
-                fp) fp="$val" ;;
-              esac
-            done
-
-            name="${server}-${port}"
-
-            {
-              echo "  - name: \"$name\""
-              echo "    type: vless"
-              echo "    server: \"$server\""
-              echo "    port: $port"
-              echo "    uuid: \"$uuid\""
-              echo "    network: \"$network\""
-              echo "    tls: $tls"
-              echo "    udp: true"
-            } >> "$OUT"
+            echo "  - name: \"$server-$port\"" >> "$OUTPUT_FILE"
+            echo "    type: vless" >> "$OUTPUT_FILE"
+            echo "    server: \"$server\"" >> "$OUTPUT_FILE"
+            echo "    port: $port" >> "$OUTPUT_FILE"
+            echo "    uuid: \"$uuid\"" >> "$OUTPUT_FILE"
+            echo "    network: \"$network\"" >> "$OUTPUT_FILE"
+            echo "    tls: false" >> "$OUTPUT_FILE"
+            echo "    udp: true" >> "$OUTPUT_FILE"
 
             if [ "$network" = "ws" ]; then
-              echo "    ws-opts:" >> "$OUT"
-              [ -n "$path" ] && echo "      path: \"$path\"" >> "$OUT"
+              echo "    ws-opts:" >> "$OUTPUT_FILE"
+              echo "      path: \"$(urldecode "$path")\"" >> "$OUTPUT_FILE"
               if [ -n "$host" ]; then
-                echo "      headers:" >> "$OUT"
-                echo "        Host: \"$host\"" >> "$OUT"
+                echo "      headers:" >> "$OUTPUT_FILE"
+                echo "        Host: \"$(urldecode "$host")\"" >> "$OUTPUT_FILE"
               fi
             fi
 
-            if [ -n "$sni" ]; then
-              echo "    servername: \"$sni\"" >> "$OUT"
-            fi
+          done
 
-            if [ -n "$pbk" ]; then
-              echo "    reality-opts:" >> "$OUT"
-              echo "      public-key: \"$pbk\"" >> "$OUT"
-              [ -n "$sid" ] && echo "      short-id: \"$sid\"" >> "$OUT"
-              [ -n "$fp" ] && echo "      fingerprint: \"$fp\"" >> "$OUT"
-            fi
-
-          done < <(grep '^  - vless://' "$RAW" || true)
+          rm -f "$TEMP_KEYS"
 
       - name: Commit and Push
         run: |
