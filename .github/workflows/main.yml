@@ -60,13 +60,13 @@ jobs:
 
           escape_yaml() {
             local str="$1"
-            str="${str//\\/\\\\}"   # обратные слеши
-            str="${str//\"/\\\"}"   # двойные кавычки
-            str="${str//\$/\\$}"    # доллар
+            str="${str//\\/\\\\}"
+            str="${str//\"/\\\"}"
+            str="${str//\$/\\$}"
             echo "$str"
           }
 
-          sed '1d' all_proxies.yaml | while IFS= read -r line || [ -n "$line" ]; do
+          tail -n +2 all_proxies.yaml | while IFS= read -r line; do
             url="${line#  - }"
             [[ -z "$url" ]] && continue
 
@@ -84,6 +84,12 @@ jobs:
 
             uuid=$(escape_yaml "$uuid")
             host=$(escape_yaml "$host")
+            path=$(escape_yaml "$path")
+
+            # Ограничение длины пути для Mihomo
+            if [ ${#path} -gt 255 ]; then
+              path="${path:0:255}"
+            fi
 
             name="${server}-${port}"
 
