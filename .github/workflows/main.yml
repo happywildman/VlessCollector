@@ -1,4 +1,4 @@
-name: Collect Proxies - Strict TCP Reality
+name: Collect Proxies
 
 on:
   schedule:
@@ -15,10 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Collect and Strict Filter
+      - name: Collect and Strict Clean Vless
         run: |
           set -e
 
@@ -29,7 +26,8 @@ jobs:
             exit 1
           fi
 
-          rm -f temp.txt clean.txt all_proxies.yaml
+          rm -f all_proxies.yaml temp.txt
+
           echo "proxies:" > all_proxies.yaml
 
           # Скачиваем все источники
@@ -40,49 +38,29 @@ jobs:
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          # Разделяем слитые строки
+          # Разделяем слипшиеся строки
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Жёсткая фильтрация под TCP + REALITY + безопасные порты + чистый Clash
+          # Фильтрация: только reality, без tls и мусора
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -v "127.0.0.1" \
             | grep -v "🔒" \
             | grep -v " " \
-            | grep -v "tls" \
+            | grep -v "security=tls" \
             | grep -E "security=reality" \
-            | grep -E 'vless://[^@]+@[^:]+:[0-9]{2,5}' \
-            | grep -v "cdnjs.com" \
-            | grep -v "fast.hosting-ip.com" \
-            | grep -v "mmd.ir" \
-            | awk 'length($0) > 60 && length($0) < 1000' \
-            | sort -u > clean.txt
+            | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
+            | awk 'length($0) > 50 && length($0) < 1200' \
+            | sort -u \
+            | head -n 30000 \
+            | sed 's/^/  - /' >> all_proxies.yaml
 
-          # Добавление флага страны
-          while read -r line; do
-            host=$(echo "$line" | sed -E 's|vless://[^@]+@([^:/]+).*|\1|')
-
-            # Получаем IP
-            ip=$(getent hosts "$host" | awk '{print $1}' | head -n1)
-            [[ -z "$ip" ]] && ip="$host"
-
-            # Получаем country code
-            country=$(curl -s --max-time 5 "http://ip-api.com/json/$ip" | jq -r '.countryCode' 2>/dev/null)
-
-            if [[ "$country" =~ ^[A-Z]{2}$ ]]; then
-              flag=$(echo "$country" | awk '{printf "%c%c\n", 127397+substr($0,1,1), 127397+substr($0,2,1)}')
-              echo "  - ${line}#${flag}" >> all_proxies.yaml
-            else
-              echo "  - ${line}" >> all_proxies.yaml
-            fi
-          done < clean.txt
-
-          rm -f temp.txt clean.txt
+          rm -f temp.txt
 
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all_proxies.yaml
-          git commit -m "Strict TCP Reality Update $(date)" || exit 0
+          git commit -m "Update proxies $(date)" || exit 0
           git push
