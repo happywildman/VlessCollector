@@ -1,4 +1,4 @@
-name: Collect Proxies
+name: Collect Proxies 
 
 on:
   schedule:
@@ -37,10 +37,8 @@ jobs:
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          # Разделяем строки с vless
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Фильтруем рабочие VLESS для clash
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
@@ -55,10 +53,52 @@ jobs:
 
           rm -f temp.txt
 
+      - name: Generate clash.yaml (Mihomo Format)
+        run: |
+          set -e
+          echo "proxies:" > clash.yaml
+
+          tail -n +2 all_proxies.yaml | while read -r line; do
+            url=$(echo "$line" | sed 's/^- //' | xargs)
+
+            uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
+            server=$(echo "$url" | sed -n 's#vless://[^@]*@\([^:]*\):.*#\1#p')
+            port=$(echo "$url" | sed -n 's#.*:\([0-9]*\).*#\1#p')
+            network=$(echo "$url" | sed -n 's/.*type=\([^&]*\).*/\1/p')
+            host=$(echo "$url" | sed -n 's/.*host=\([^&]*\).*/\1/p')
+            path=$(echo "$url" | sed -n 's/.*path=\([^&]*\).*/\1/p')
+
+            [ -z "$uuid" ] && continue
+            [ -z "$server" ] && continue
+            [ -z "$port" ] && continue
+
+            [ -z "$network" ] && network="tcp"
+
+            name="${server}-${port}"
+
+            echo "  - name: \"$name\"" >> clash.yaml
+            echo "    type: vless" >> clash.yaml
+            echo "    server: $server" >> clash.yaml
+            echo "    port: $port" >> clash.yaml
+            echo "    uuid: $uuid" >> clash.yaml
+            echo "    network: $network" >> clash.yaml
+            echo "    tls: false" >> clash.yaml
+            echo "    udp: true" >> clash.yaml
+
+            if [ "$network" = "ws" ]; then
+              echo "    ws-opts:" >> clash.yaml
+              echo "      path: \"${path:-/}\"" >> clash.yaml
+              if [ -n "$host" ]; then
+                echo "      headers:" >> clash.yaml
+                echo "        Host: \"$host\"" >> clash.yaml
+              fi
+            fi
+          done
+
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add all_proxies.yaml
+          git add all_proxies.yaml clash.yaml
           git commit -m "Update proxies $(date)" || exit 0
           git push
