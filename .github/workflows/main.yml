@@ -17,7 +17,7 @@ jobs:
       - name: Generate Clash.yaml (Full & Clean)
         run: |
           set -e
-          python3 <<EOF
+          python3 - <<'EOF'
 import yaml
 from urllib.parse import urlparse, parse_qs, unquote
 
