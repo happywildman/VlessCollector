@@ -1,4 +1,4 @@
-name: Collect Proxies 
+name: Collect Proxies
 
 on:
   schedule:
@@ -62,17 +62,37 @@ jobs:
             url="${line#  - }"
             [[ -z "$url" ]] && continue
 
+            # Извлекаем UUID
             uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
-            server=$(echo "$url" | sed -n 's#vless://[^@]*@\([^:]*\):.*#\1#p')
-            port=$(echo "$url" | sed -n 's#.*:\([0-9]*\).*#\1#p')
-            network=$(echo "$url" | sed -n 's/.*type=\([^&]*\).*/\1/p')
-            host=$(echo "$url" | sed -n 's/.*host=\([^&]*\).*/\1/p')
-            path=$(echo "$url" | sed -n 's/.*path=\([^&]*\).*/\1/p')
+            
+            # Извлекаем server и port
+            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
+            server=$(echo "$server_port" | cut -d: -f1)
+            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$')
+            
+            # Извлекаем query string (параметры после ?)
+            query=$(echo "$url" | sed -n 's/.*?\(.*\)#.*/\1/p; s/.*?\(.*\)/\1/p')
+            
+            network="tcp"
+            host=""
+            path=""
+            
+            # Парсим query параметры
+            if [ -n "$query" ]; then
+              # Разбираем параметры через &
+              echo "$query" | tr '&' '\n' | while IFS='=' read -r key value; do
+                case "$key" in
+                  "type") network="$value" ;;
+                  "host") host="$value" ;;
+                  "path") path="$value" ;;
+                esac
+              done
+            fi
 
-            [ -z "$uuid" ] && continue
-            [ -z "$server" ] && continue
-            [ -z "$port" ] && continue
-            [ -z "$network" ] && network="tcp"
+            # Проверяем что все обязательные поля есть
+            if [ -z "$uuid" ] || [ -z "$server" ] || [ -z "$port" ]; then
+              continue
+            fi
 
             # Ограничение длины пути для Mihomo
             if [ ${#path} -gt 255 ]; then
