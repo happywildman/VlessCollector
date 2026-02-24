@@ -58,7 +58,11 @@ jobs:
           set -e
           echo "proxies:" > clash.yaml
 
-          tail -n +2 all_proxies.yaml | while IFS= read -r line; do
+          # Читаем файл построчно без использования пайпа
+          while IFS= read -r line || [ -n "$line" ]; do
+            # Пропускаем первую строку "proxies:"
+            [[ "$line" == "proxies:" ]] && continue
+            
             url="${line#  - }"
             [[ -z "$url" ]] && continue
 
@@ -68,7 +72,7 @@ jobs:
             # Извлекаем server и port
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
             server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$')
+            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
             
             # Извлекаем query string (параметры после ?)
             query=$(echo "$url" | sed -n 's/.*?\(.*\)#.*/\1/p; s/.*?\(.*\)/\1/p')
@@ -79,14 +83,16 @@ jobs:
             
             # Парсим query параметры
             if [ -n "$query" ]; then
-              # Разбираем параметры через &
-              echo "$query" | tr '&' '\n' | while IFS='=' read -r key value; do
+              # Используем временный файл для безопасного парсинга
+              echo "$query" | tr '&' '\n' > /tmp/query_params.txt
+              while IFS='=' read -r key value; do
                 case "$key" in
                   "type") network="$value" ;;
                   "host") host="$value" ;;
                   "path") path="$value" ;;
                 esac
-              done
+              done < /tmp/query_params.txt
+              rm -f /tmp/query_params.txt
             fi
 
             # Проверяем что все обязательные поля есть
@@ -101,24 +107,32 @@ jobs:
 
             name="${server}-${port}"
 
-            echo "  - name: \"$name\"" >> clash.yaml
-            echo "    type: vless" >> clash.yaml
-            echo "    server: \"$server\"" >> clash.yaml
-            echo "    port: $port" >> clash.yaml
-            echo "    uuid: \"$uuid\"" >> clash.yaml
-            echo "    network: \"$network\"" >> clash.yaml
-            echo "    tls: false" >> clash.yaml
-            echo "    udp: true" >> clash.yaml
+            # Записываем в файл
+            {
+              echo "  - name: \"$name\""
+              echo "    type: vless"
+              echo "    server: \"$server\""
+              echo "    port: $port"
+              echo "    uuid: \"$uuid\""
+              echo "    network: \"$network\""
+              echo "    tls: false"
+              echo "    udp: true"
+            } >> clash.yaml
 
             if [ "$network" = "ws" ]; then
-              echo "    ws-opts:" >> clash.yaml
-              echo "      path: \"${path:-/}\"" >> clash.yaml
+              {
+                echo "    ws-opts:"
+                echo "      path: \"${path:-/}\""
+              } >> clash.yaml
+              
               if [ -n "$host" ]; then
-                echo "      headers:" >> clash.yaml
-                echo "        Host: \"$host\"" >> clash.yaml
+                {
+                  echo "      headers:"
+                  echo "        Host: \"$host\""
+                } >> clash.yaml
               fi
             fi
-          done
+          done < all_proxies.yaml
 
       - name: Commit and Push
         run: |
