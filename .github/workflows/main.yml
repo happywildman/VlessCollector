@@ -53,7 +53,6 @@ jobs:
 
           rm -f temp.txt
 
-      # ---------- НОВЫЙ STEP (RAW -> CLASH) ----------
       - name: Generate Clash Config
         run: |
           set -e
@@ -63,7 +62,11 @@ jobs:
 
           echo "proxies:" > "$OUT"
 
-          # Читаем только строки с vless
+          if ! grep -q '^  - vless://' "$RAW"; then
+            echo "No valid VLESS entries found."
+            exit 0
+          fi
+
           while IFS= read -r line; do
 
             link="${line#  - }"
@@ -74,7 +77,6 @@ jobs:
 
             uuid="${clean%%@*}"
             rest="${clean#*@}"
-
             host_port="${rest%%\?*}"
 
             if [[ "$host_port" =~ \[(.*)\]:(.*) ]]; then
@@ -93,6 +95,9 @@ jobs:
             host=""
             path=""
             sni=""
+            pbk=""
+            sid=""
+            fp=""
 
             IFS='&' read -ra kv <<< "$params"
             for pair in "${kv[@]}"; do
@@ -101,10 +106,14 @@ jobs:
 
               case "$key" in
                 type) network="$val" ;;
-                security) [ "$val" = "tls" ] && tls="true" ;;
+                security) [ "$val" = "tls" ] && tls="true"
+                          [ "$val" = "reality" ] && tls="true" ;;
                 host) host="$val" ;;
                 path) path="$val" ;;
                 sni) sni="$val" ;;
+                pbk) pbk="$val" ;;
+                sid) sid="$val" ;;
+                fp) fp="$val" ;;
               esac
             done
 
@@ -130,9 +139,18 @@ jobs:
               fi
             fi
 
-            [ -n "$sni" ] && echo "    servername: \"$sni\"" >> "$OUT"
+            if [ -n "$sni" ]; then
+              echo "    servername: \"$sni\"" >> "$OUT"
+            fi
 
-          done < <(grep '^  - vless://' "$RAW")
+            if [ -n "$pbk" ]; then
+              echo "    reality-opts:" >> "$OUT"
+              echo "      public-key: \"$pbk\"" >> "$OUT"
+              [ -n "$sid" ] && echo "      short-id: \"$sid\"" >> "$OUT"
+              [ -n "$fp" ] && echo "      fingerprint: \"$fp\"" >> "$OUT"
+            fi
+
+          done < <(grep '^  - vless://' "$RAW" || true)
 
       - name: Commit and Push
         run: |
