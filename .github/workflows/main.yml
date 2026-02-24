@@ -57,6 +57,9 @@ jobs:
         run: |
           set -e
           echo "proxies:" > clash.yaml
+          
+          # Создаем временный файл для отслеживания уникальных прокси
+          > /tmp/unique_proxies.txt
 
           # Читаем файл построчно без использования пайпа
           while IFS= read -r line || [ -n "$line" ]; do
@@ -66,8 +69,11 @@ jobs:
             url="${line#  - }"
             [[ -z "$url" ]] && continue
 
-            # Извлекаем UUID
-            uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
+            # Декодируем URL-encoded символы
+            url=$(echo "$url" | sed 's/%40/@/g; s/%3A/:/g; s/%2F/\//g; s/%3F/?/g; s/%3D/=/g; s/%26/\&/g')
+
+            # Извлекаем UUID и декодируем его
+            uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p' | sed 's/%40/@/g')
             
             # Извлекаем server и port
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
@@ -80,16 +86,27 @@ jobs:
             network="tcp"
             host=""
             path=""
+            security="none"
+            flow=""
+            sni=""
+            fingerprint=""
             
             # Парсим query параметры
             if [ -n "$query" ]; then
               # Используем временный файл для безопасного парсинга
               echo "$query" | tr '&' '\n' > /tmp/query_params.txt
               while IFS='=' read -r key value; do
+                # Декодируем значение параметра
+                value=$(echo "$value" | sed 's/%40/@/g; s/%3A/:/g; s/%2F/\//g')
                 case "$key" in
                   "type") network="$value" ;;
                   "host") host="$value" ;;
                   "path") path="$value" ;;
+                  "security") security="$value" ;;
+                  "flow") flow="$value" ;;
+                  "sni") sni="$value" ;;
+                  "fp") fingerprint="$value" ;;
+                  "alpn") alpn="$value" ;;
                 esac
               done < /tmp/query_params.txt
               rm -f /tmp/query_params.txt
@@ -99,6 +116,15 @@ jobs:
             if [ -z "$uuid" ] || [ -z "$server" ] || [ -z "$port" ]; then
               continue
             fi
+
+            # Создаем уникальный ключ для прокси
+            proxy_key="${server}:${port}:${uuid}"
+            
+            # Проверяем, не добавляли ли мы уже такой прокси
+            if grep -q "^${proxy_key}$" /tmp/unique_proxies.txt; then
+              continue
+            fi
+            echo "$proxy_key" >> /tmp/unique_proxies.txt
 
             # Ограничение длины пути для Mihomo
             if [ ${#path} -gt 255 ]; then
@@ -119,6 +145,7 @@ jobs:
               echo "    udp: true"
             } >> clash.yaml
 
+            # Добавляем параметры для разных типов сетей
             if [ "$network" = "ws" ]; then
               {
                 echo "    ws-opts:"
@@ -131,8 +158,48 @@ jobs:
                   echo "        Host: \"$host\""
                 } >> clash.yaml
               fi
+            elif [ "$network" = "grpc" ]; then
+              {
+                echo "    grpc-opts:"
+                echo "      grpc-service-name: \"${path:-/}\""
+              } >> clash.yaml
             fi
+
+            # Добавляем TLS параметры если нужно
+            if [ "$security" = "tls" ] || [ "$security" = "reality" ]; then
+              sed -i '$ s/tls: false/tls: true/' clash.yaml
+              if [ -n "$sni" ]; then
+                echo "    sni: \"$sni\"" >> clash.yaml
+              fi
+              if [ -n "$fingerprint" ]; then
+                echo "    fingerprint: \"$fingerprint\"" >> clash.yaml
+              fi
+            fi
+
+            # Добавляем flow для XTLS/Xray
+            if [ -n "$flow" ]; then
+              echo "    flow: \"$flow\"" >> clash.yaml
+            fi
+
           done < all_proxies.yaml
+
+          # Очищаем временные файлы
+          rm -f /tmp/unique_proxies.txt
+
+      - name: Validate YAML
+        run: |
+          # Простая проверка формата YAML
+          if ! head -n 5 clash.yaml | grep -q "proxies:"; then
+            echo "Error: Invalid YAML format"
+            exit 1
+          fi
+          
+          # Проверяем что есть хотя бы один прокси
+          if [ $(grep -c "^- name:" clash.yaml) -eq 0 ]; then
+            echo "Warning: No proxies found"
+          else
+            echo "Found $(grep -c "^- name:" clash.yaml) proxies"
+          fi
 
       - name: Commit and Push
         run: |
