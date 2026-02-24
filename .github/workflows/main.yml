@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # Максимальное время выполнения 5 минут
+    timeout-minutes: 5
     permissions:
       contents: write
 
@@ -44,7 +44,6 @@ jobs:
             count=$((count + 1))
             echo "[$count/$total_urls] Processing: $clean_url"
             
-            # Добавляем таймаут и ограничение на размер ответа
             curl -fsSL --max-time 10 --max-filesize 1M "$clean_url" >> temp.txt 2>/dev/null || {
               echo "  ⚠️ Failed to fetch or too large"
               continue
@@ -79,6 +78,14 @@ jobs:
           echo "Starting generation at $(date)"
           echo "proxies:" > clash.yaml
           
+          # Функция для декодирования процентного кодирования
+          urldecode() {
+            local data="$1"
+            # Декодируем %NN в символы
+            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
+            echo "$decoded"
+          }
+
           # Создаем временный файл для отслеживания уникальных прокси
           > /tmp/unique_proxies.txt
 
@@ -100,11 +107,11 @@ jobs:
               echo "Processed $current/$total_proxies proxies"
             fi
 
-            # Декодируем URL-encoded символы
-            url=$(echo "$url" | sed 's/%40/@/g; s/%3A/:/g; s/%2F/\//g; s/%3F/?/g; s/%3D/=/g; s/%26/\&/g')
-
-            # Извлекаем UUID и декодируем его
-            uuid=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p' | sed 's/%40/@/g')
+            # Извлекаем UUID (до @)
+            uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
+            
+            # Декодируем UUID из процентного формата
+            uuid=$(urldecode "$uuid_encoded")
             
             # Извлекаем server и port
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
@@ -116,27 +123,27 @@ jobs:
               continue
             fi
 
-            # Создаем уникальный ключ для прокси
+            # Создаем уникальный ключ (server:port:uuid)
             proxy_key="${server}:${port}:${uuid}"
             
-            # Проверяем, не добавляли ли мы уже такой прокси
+            # Проверяем дубликаты
             if grep -q "^${proxy_key}$" /tmp/unique_proxies.txt 2>/dev/null; then
               continue
             fi
             echo "$proxy_key" >> /tmp/unique_proxies.txt
 
-            # Извлекаем query string (параметры после ?)
+            # Извлекаем параметры
             query=$(echo "$url" | sed -n 's/.*?\(.*\)#.*/\1/p; s/.*?\(.*\)/\1/p')
             
             network="tcp"
             host=""
             path=""
             
-            # Парсим query параметры
+            # Парсим параметры
             if [ -n "$query" ]; then
               echo "$query" | tr '&' '\n' | while IFS='=' read -r key value; do
-                # Декодируем значение параметра
-                value=$(echo "$value" | sed 's/%40/@/g; s/%3A/:/g; s/%2F/\//g')
+                # Декодируем значение параметра если нужно
+                value=$(urldecode "$value")
                 case "$key" in
                   "type") network="$value" ;;
                   "host") host="$value" ;;
@@ -145,12 +152,9 @@ jobs:
               done
             fi
 
-            # Ограничение длины пути для Mihomo
-            if [ ${#path} -gt 255 ]; then
-              path="${path:0:255}"
-            fi
-
-            name="${server}-${port}"
+            # Создаем уникальное имя (добавляем первые символы UUID для уникальности)
+            uuid_short=$(echo "$uuid" | cut -c1-8)
+            name="${server}-${port}-${uuid_short}"
 
             # Записываем в файл
             {
@@ -164,10 +168,11 @@ jobs:
               echo "    udp: true"
             } >> clash.yaml
 
+            # Добавляем WebSocket параметры если есть
             if [ "$network" = "ws" ] && [ -n "$path" ]; then
               {
                 echo "    ws-opts:"
-                echo "      path: \"${path}\""
+                echo "      path: \"$path\""
               } >> clash.yaml
               
               if [ -n "$host" ]; then
@@ -186,20 +191,18 @@ jobs:
           echo "Generation completed at $(date)"
           echo "Generated $(grep -c '^- name:' clash.yaml || echo 0) unique proxies"
 
-      - name: Validate and Show Stats
+      - name: Show Sample
         run: |
-          echo "=== STATISTICS ==="
-          echo "Raw proxies found: $(grep -c 'vless://' all_proxies.yaml || echo 0)"
-          echo "Unique VLESS proxies: $(grep -c '^- name:' clash.yaml || echo 0)"
+          echo "=== FIRST 3 PROXIES ==="
+          head -n 30 clash.yaml | grep -A 7 "^- name:" | head -n 24
+          
           echo ""
-          echo "=== SAMPLE (first 3) ==="
-          head -n 20 clash.yaml | grep -A 5 "^- name:" | head -n 15 || echo "No proxies found"
-          echo ""
-          echo "Workflow completed at $(date)"
+          echo "=== UUID EXAMPLE ==="
+          grep "uuid:" clash.yaml | head -n 1
 
       - name: Commit and Push
         run: |
-          # Проверяем, есть ли изменения
+          # Проверяем изменения
           if git diff --quiet && git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
