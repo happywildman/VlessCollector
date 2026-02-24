@@ -12,7 +12,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Collect and Strict Clean Vless
@@ -30,37 +30,74 @@ jobs:
 
           echo "proxies:" > all_proxies.yaml
 
-          # Скачиваем все источники
           while IFS= read -r url || [ -n "$url" ]; do
             clean_url=$(echo "$url" | tr -d '\r' | xargs)
             [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
-            curl -fsSL --max-time 20 "$clean_url" >> temp.txt || true
+            curl -fsSL --max-time 15 "$clean_url" >> temp.txt || true
             echo "" >> temp.txt
           done < "$SOURCE_FILE"
 
-          # Разделяем слипшиеся строки
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Фильтрация: только reality, без tls и мусора
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
+            | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
             | grep -v "127.0.0.1" \
             | grep -v "🔒" \
             | grep -v " " \
-            | grep -v "security=tls" \
-            | grep -E "security=reality" \
-            | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
-            | awk 'length($0) > 50 && length($0) < 1200' \
+            | awk 'length($0) > 40 && length($0) < 1200' \
             | sort -u \
             | head -n 30000 \
             | sed 's/^/  - /' >> all_proxies.yaml
 
           rm -f temp.txt
 
+      - name: Convert VLESS URLs to Clash format
+        run: |
+          set -e
+
+          INPUT_FILE="all_proxies.yaml"
+          OUTPUT_FILE="all_proxies_clash.yaml"
+
+          echo "proxies:" > "$OUTPUT_FILE"
+
+          # Берём каждый vless URL и конвертируем
+          grep -oE 'vless://[^[:space:]]+' "$INPUT_FILE" | while read -r url; do
+            [[ -z "$url" ]] && continue
+
+            # Имя сервера — комментарий после #
+            NAME=$(echo "$url" | sed -n 's/.*#\(.*\)$/\1/p')
+            [[ -z "$NAME" ]] && NAME="VLESS_$(date +%s%N | cut -c1-8)"
+
+            # Разбор URL
+            SERVER=$(echo "$url" | sed -E 's|vless://[^@]+@([^:]+):([0-9]+).*|\1|')
+            PORT=$(echo "$url" | sed -E 's|vless://[^@]+@([^:]+):([0-9]+).*|\2|')
+            UUID=$(echo "$url" | sed -E 's|vless://%40?([^@]+)@.*|\1|')
+            FLOW=$(echo "$url" | grep -oP 'flow=\K[^&]*' || echo "")
+            SECURITY=$(echo "$url" | grep -oP 'security=\K[^&]*' || echo "none")
+            NETWORK=$(echo "$url" | grep -oP 'type=\K[^&]*' || echo "tcp")
+            SNI=$(echo "$url" | grep -oP 'sni=\K[^&]*' || echo "")
+            FP=$(echo "$url" | grep -oP 'fp=\K[^&]*' || echo "")
+
+            # Записываем в новый YAML
+            cat >> "$OUTPUT_FILE" <<EOF
+  - name: "$NAME"
+    type: vless
+    server: "$SERVER"
+    port: $PORT
+    uuid: "$UUID"
+    flow: "$FLOW"
+    network: "$NETWORK"
+    security: "$SECURITY"
+    sni: "$SNI"
+    fp: "$FP"
+EOF
+          done
+
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add all_proxies.yaml
+          git add all_proxies.yaml all_proxies_clash.yaml
           git commit -m "Update proxies $(date)" || exit 0
           git push
