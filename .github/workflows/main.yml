@@ -15,27 +15,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate Clash YAML
+      - name: Download and Extract VLESS
         run: |
           set -e
 
           SOURCE_FILE="VlessLinks.txt"
+          OUTPUT_RAW="raw_links.txt"
           OUTPUT_FILE="all_proxies.yaml"
 
-          if [ ! -f "$SOURCE_FILE" ]; then
-            echo "VlessLinks.txt not found"
-            exit 1
-          fi
+          rm -f "$OUTPUT_RAW" "$OUTPUT_FILE"
 
-          rm -f "$OUTPUT_FILE" temp.txt
+          touch "$OUTPUT_RAW"
 
-          echo "proxies:" > "$OUTPUT_FILE"
+          while IFS= read -r url || [ -n "$url" ]; do
+            clean_url=$(echo "$url" | tr -d '\r' | xargs)
+            [ -z "$clean_url" ] && continue
 
-          grep -E '^vless://' "$SOURCE_FILE" | grep -v "tls" | sort -u > temp.txt
+            echo "Downloading $clean_url"
 
-          while IFS= read -r line || [ -n "$line" ]; do
-            url=$(echo "$line" | tr -d '\r' | xargs)
+            content=$(curl -fsSL --max-time 20 "$clean_url" || true)
 
+            # Проверка base64
+            if echo "$content" | grep -qv "vless://"; then
+              decoded=$(echo "$content" | base64 -d 2>/dev/null || true)
+              echo "$decoded" >> "$OUTPUT_RAW"
+            else
+              echo "$content" >> "$OUTPUT_RAW"
+            fi
+
+            echo "" >> "$OUTPUT_RAW"
+          done < "$SOURCE_FILE"
+
+          # Оставляем только vless строки
+          grep -oE 'vless://[^[:space:]]+' "$OUTPUT_RAW" | sort -u > clean_vless.txt
+
+      - name: Convert to Clash YAML
+        run: |
+          set -e
+
+          echo "proxies:" > all_proxies.yaml
+
+          while IFS= read -r url || [ -n "$url" ]; do
             if [[ "$url" =~ ^vless://([^@]+)@([^:]+):([0-9]+)\?([^#]+)#?(.*)$ ]]; then
               UUID="${BASH_REMATCH[1]}"
               SERVER="${BASH_REMATCH[2]}"
@@ -44,47 +64,31 @@ jobs:
               NAME="${BASH_REMATCH[5]}"
 
               TYPE=$(echo "$QUERY" | grep -oP 'type=\K[^&]*' || echo "tcp")
-              FLOW=$(echo "$QUERY" | grep -oP 'flow=\K[^&]*' || echo "")
               SECURITY=$(echo "$QUERY" | grep -oP 'security=\K[^&]*' || echo "")
               SNI=$(echo "$QUERY" | grep -oP 'sni=\K[^&]*' || echo "")
-              FP=$(echo "$QUERY" | grep -oP 'fp=\K[^&]*' || echo "")
-              HOST=$(echo "$QUERY" | grep -oP 'host=\K[^&]*' || echo "")
-              PATH=$(echo "$QUERY" | grep -oP 'path=\K[^&]*' || echo "")
 
-              echo "  - name: \"${NAME:-${SERVER}}\"" >> "$OUTPUT_FILE"
-              echo "    type: vless" >> "$OUTPUT_FILE"
-              echo "    server: ${SERVER}" >> "$OUTPUT_FILE"
-              echo "    port: ${PORT}" >> "$OUTPUT_FILE"
-              echo "    uuid: ${UUID}" >> "$OUTPUT_FILE"
-              echo "    udp: true" >> "$OUTPUT_FILE"
+              echo "  - name: \"${NAME:-$SERVER}\"" >> all_proxies.yaml
+              echo "    type: vless" >> all_proxies.yaml
+              echo "    server: $SERVER" >> all_proxies.yaml
+              echo "    port: $PORT" >> all_proxies.yaml
+              echo "    uuid: $UUID" >> all_proxies.yaml
+              echo "    udp: true" >> all_proxies.yaml
 
-              if [ -n "$TYPE" ]; then
-                echo "    network: ${TYPE}" >> "$OUTPUT_FILE"
+              if [ "$TYPE" = "ws" ]; then
+                echo "    network: ws" >> all_proxies.yaml
+              else
+                echo "    network: tcp" >> all_proxies.yaml
               fi
 
-              if [ "$SECURITY" = "reality" ]; then
-                echo "    tls: true" >> "$OUTPUT_FILE"
+              if [ "$SECURITY" = "reality" ] || [ "$SECURITY" = "tls" ]; then
+                echo "    tls: true" >> all_proxies.yaml
               fi
 
               if [ -n "$SNI" ]; then
-                echo "    sni: ${SNI}" >> "$OUTPUT_FILE"
-              fi
-
-              if [ -n "$FLOW" ]; then
-                echo "    flow: ${FLOW}" >> "$OUTPUT_FILE"
-              fi
-
-              if [ -n "$HOST" ]; then
-                echo "    host: ${HOST}" >> "$OUTPUT_FILE"
-              fi
-
-              if [ -n "$PATH" ]; then
-                echo "    path: ${PATH}" >> "$OUTPUT_FILE"
+                echo "    sni: $SNI" >> all_proxies.yaml
               fi
             fi
-          done < temp.txt
-
-          rm -f temp.txt
+          done < clean_vless.txt
 
       - name: Commit and push
         run: |
