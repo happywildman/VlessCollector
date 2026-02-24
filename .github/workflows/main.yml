@@ -55,6 +55,82 @@ jobs:
 
           rm -f temp.txt
 
+      - name: Convert VLESS URLs to Clash Format
+        run: |
+          set -e
+
+          INPUT="all_proxies.yaml"
+          OUTPUT="clash_proxies.yaml"
+
+          echo "proxies:" > $OUTPUT
+
+          grep -oE 'vless://[^[:space:]]+' "$INPUT" | while read -r link; do
+
+            # Удаляем часть после #
+            base="${link%%#*}"
+
+            # Убираем префикс
+            clean="${base#vless://}"
+
+            # UUID
+            uuid="${clean%%@*}"
+
+            rest="${clean#*@}"
+
+            # Server и Port
+            host_port="${rest%%\?*}"
+
+            if [[ "$host_port" =~ \[(.*)\]:(.*) ]]; then
+              server="${BASH_REMATCH[1]}"
+              port="${BASH_REMATCH[2]}"
+            else
+              server="${host_port%%:*}"
+              port="${host_port##*:}"
+            fi
+
+            # Параметры
+            params=""
+            if [[ "$rest" == *\?* ]]; then
+              params="${rest#*\?}"
+            fi
+
+            type=$(echo "$params" | tr '&' '\n' | grep '^type=' | cut -d '=' -f2 || true)
+            security=$(echo "$params" | tr '&' '\n' | grep '^security=' | cut -d '=' -f2 || true)
+            host=$(echo "$params" | tr '&' '\n' | grep '^host=' | cut -d '=' -f2 || true)
+            path=$(echo "$params" | tr '&' '\n' | grep '^path=' | cut -d '=' -f2 || true)
+            sni=$(echo "$params" | tr '&' '\n' | grep '^sni=' | cut -d '=' -f2 || true)
+
+            [ -z "$type" ] && type="tcp"
+            [ "$security" = "tls" ] && tls="true" || tls="false"
+
+            name="${server}-${port}"
+
+            echo "  - name: \"$name\"" >> $OUTPUT
+            echo "    type: vless" >> $OUTPUT
+            echo "    server: \"$server\"" >> $OUTPUT
+            echo "    port: $port" >> $OUTPUT
+            echo "    uuid: \"$uuid\"" >> $OUTPUT
+            echo "    network: \"$type\"" >> $OUTPUT
+            echo "    tls: $tls" >> $OUTPUT
+            echo "    udp: true" >> $OUTPUT
+
+            if [ "$type" = "ws" ]; then
+              echo "    ws-opts:" >> $OUTPUT
+              [ -n "$path" ] && echo "      path: \"$path\"" >> $OUTPUT
+              if [ -n "$host" ]; then
+                echo "      headers:" >> $OUTPUT
+                echo "        Host: \"$host\"" >> $OUTPUT
+              fi
+            fi
+
+            if [ -n "$sni" ]; then
+              echo "    servername: \"$sni\"" >> $OUTPUT
+            fi
+
+          done
+
+          mv $OUTPUT all_proxies.yaml
+
       - name: Commit and Push
         run: |
           git config --global user.name "github-actions[bot]"
