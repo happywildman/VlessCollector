@@ -1,107 +1,77 @@
-name: Collect Proxies
-
-on:
-  schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Collect and Strict Clean Vless
+      - name: Generate Clash.yaml (Full & Clean)
         run: |
           set -e
+          python3 <<EOF
+import yaml
+import re
+from urllib.parse import urlparse, parse_qs, unquote
 
-          SOURCE_FILE="VlessLinks.txt"
+# Загружаем исходные прокси
+with open("all_proxies.yaml", "r", encoding="utf-8") as f:
+    data = yaml.safe_load(f)
 
-          if [ ! -f "$SOURCE_FILE" ]; then
-            echo "VlessLinks.txt not found"
-            exit 1
-          fi
+seen = set()
+clash_proxies = []
 
-          rm -f all_proxies.yaml temp.txt clash.yaml
+for item in data.get("proxies", []):
+    if not item.strip().startswith("-"):
+        continue
 
-          echo "proxies:" > all_proxies.yaml
+    url = item.strip()[2:]
+    if not url.startswith("vless://"):
+        continue
 
-          while IFS= read -r url || [ -n "$url" ]; do
-            clean_url=$(echo "$url" | tr -d '\r' | xargs)
-            [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
-            curl -fsSL --max-time 15 "$clean_url" >> temp.txt || true
-            echo "" >> temp.txt
-          done < "$SOURCE_FILE"
+    parsed = urlparse(url)
 
-          # Разделяем строки с vless
-          sed -i 's/vless:/\nvless:/g' temp.txt
+    if not parsed.hostname or not parsed.port:
+        continue
 
-          # Фильтруем рабочие VLESS для clash
-          grep -oE 'vless://[^[:space:]]+' temp.txt \
-            | grep -v "%25" \
-            | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
-            | grep -v "127.0.0.1" \
-            | grep -v "🔒" \
-            | grep -v "tls" \
-            | grep -v " " \
-            | awk 'length($0) > 40 && length($0) < 1200' \
-            | sort -u \
-            | head -n 30000 \
-            | sed 's/^/  - /' >> all_proxies.yaml
+    uuid = unquote(parsed.username or "")
+    server = parsed.hostname
+    port = parsed.port
 
-          # Генерация clash.yaml на основе all_proxies.yaml
-          echo "proxies:" > clash.yaml
-          awk '{
-            if ($1 == "-") {
-              vless=$2
-              # Разбор URL
-              match(vless, /^vless:\/\/([^@]+)@([^:]+):([0-9]+)\?([^#]+)#?(.*)$/, arr)
-              if (arr[0] != "") {
-                uuid=arr[1]
-                server=arr[2]
-                port=arr[3]
-                query=arr[4]
-                name=arr[5]
-                # Определение типа сети и пути
-                network="tcp"
-                path=""
-                host_header=""
-                split(query, qlist, "&")
-                for (i in qlist) {
-                  split(qlist[i], kv, "=")
-                  if (kv[1]=="type") network=kv[2]
-                  if (kv[1]=="path") path=kv[2]
-                  if (kv[1]=="host") host_header=kv[2]
-                }
-                # Вывод в clash.yaml
-                printf "  - name: \"%s\"\n", (name != "" ? name : server "-" port) >> "clash.yaml"
-                printf "    type: vless\n" >> "clash.yaml"
-                printf "    server: \"%s\"\n", server >> "clash.yaml"
-                printf "    port: %s\n", port >> "clash.yaml"
-                printf "    uuid: \"%s\"\n", uuid >> "clash.yaml"
-                printf "    network: \"%s\"\n", network >> "clash.yaml"
-                printf "    tls: false\n" >> "clash.yaml"
-                printf "    udp: true\n" >> "clash.yaml"
-                if (network == "ws" || network == "http") {
-                  printf "    ws-opts:\n" >> "clash.yaml"
-                  printf "      path: \"%s\"\n", path >> "clash.yaml"
-                  printf "      headers:\n" >> "clash.yaml"
-                  printf "        Host: \"%s\"\n", host_header >> "clash.yaml"
-                }
-              }
-            }
-          }' all_proxies.yaml
+    # Фильтр слишком коротких или мусорных UUID
+    if len(uuid) < 6:
+        continue
 
-          rm -f temp.txt
+    query = parse_qs(parsed.query)
+    network = query.get("type", ["tcp"])[0]
+    path = unquote(query.get("path", [""])[0])
+    host = unquote(query.get("host", [""])[0])
 
-      - name: Commit and Push
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add all_proxies.yaml clash.yaml
-          git commit -m "Update proxies $(date)" || exit 0
-          git push
+    # Избегаем дубликатов
+    key = f"{server}_{port}_{uuid}_{network}"
+    if key in seen:
+        continue
+    seen.add(key)
+
+    # Структура прокси для Clash
+    proxy = {
+        "name": f"{server}-{port}",
+        "type": "vless",
+        "server": server,
+        "port": port,
+        "uuid": uuid,
+        "network": network,
+        "tls": False,
+        "udp": True
+    }
+
+    # WebSocket опции
+    if network == "ws":
+        ws_opts = {"path": path}
+        if host:
+            ws_opts["headers"] = {"Host": host}
+        proxy["ws-opts"] = ws_opts
+
+    clash_proxies.append(proxy)
+
+# Сохраняем готовый clash.yaml
+with open("clash.yaml", "w", encoding="utf-8") as f:
+    yaml.dump(
+        {"proxies": clash_proxies},
+        f,
+        allow_unicode=True,
+        sort_keys=False
+    )
+EOF
