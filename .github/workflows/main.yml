@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: write
 
@@ -70,7 +70,10 @@ jobs:
           rm -f temp.txt
           
           echo "Collection completed at $(date)"
-          echo "Found $(grep -c '^-' all_proxies.yaml || echo 0) proxies"
+          
+          # Безопасный подсчёт
+          total_proxies=$(grep -c '^-' all_proxies.yaml || echo 0)
+          echo "Found $total_proxies proxies"
 
       # ===== ШАГ 2: ПИНГ ТЕСТ (ПАРАЛЛЕЛЬНО) → ping.yaml =====
       - name: Ping test - create ping.yaml
@@ -159,106 +162,78 @@ jobs:
             sort -u /tmp/ping_passed.txt >> ping.yaml
           fi
           
-          passed_count=$(grep -c '^-' ping.yaml || echo 0)
+          # Безопасный подсчёт с проверкой пустых значений
+          total=${total:-0}
+          passed=$(grep -c '^-' ping.yaml || echo 0)
+          passed=${passed:-0}
           
           echo ""
           echo "=== PING TEST RESULTS ==="
           echo "Total processed: $total"
-          echo "✅ Passed ping: $passed_count"
-          echo "❌ Failed ping: $((total - passed_count))"
+          echo "✅ Passed ping: $passed"
+          echo "❌ Failed ping: $((total - passed))"
           
           rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
-      # ===== ШАГ 3: ТРАФИК ТЕСТ (ПАРАЛЛЕЛЬНО) → traff.yaml =====
-      - name: Traffic test - create traff.yaml
+      # ===== ШАГ 3: ТРАФИК ТЕСТ (ЧЕРЕЗ VPN-CHECKER-BACKEND) → traff.yaml =====
+      - name: Traffic test with vpn-checker-backend
         run: |
           set -e
-          echo "Starting TRAFFIC TEST at $(date)"
+          echo "Starting TRAFFIC TEST with vpn-checker-backend at $(date)"
           
-          # Функция декодирования
-          urldecode() {
-            local data="$1"
-            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
-            echo "$decoded"
-          }
+          # Устанавливаем Python и зависимости
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
           
+          # Клонируем vpn-checker-backend
+          git clone https://github.com/arsham1993/vpn-checker-backend.git
+          cd vpn-checker-backend
+          
+          # Устанавливаем зависимости
+          pip3 install -r requirements.txt
+          
+          # Создаем файл с прокси для проверки (в формате vless://)
+          cd ..
+          grep "vless://" ping.yaml | sed 's/  - //g' > /tmp/proxies_to_check.txt
+          
+          total_proxies=$(wc -l < /tmp/proxies_to_check.txt)
+          echo "Total proxies for traffic test: $total_proxies"
+          
+          # Запускаем проверку через vpn-checker-backend
+          cd vpn-checker-backend
+          
+          # Создаем конфиг для проверки
+          cat > config.yaml << EOF
+threads: 40
+timeout: 5
+cache_hours: 12
+test_url: "http://www.gstatic.com/generate_204"
+output_format: "vless"
+EOF
+          
+          # Запускаем проверку
+          python3 checker.py --input /tmp/proxies_to_check.txt --output /tmp/traffic_passed.txt
+          
+          cd ..
+          
+          # Создаем traff.yaml из результатов
           echo "proxies:" > traff.yaml
           
-          # Создаем директорию для временных файлов
-          mkdir -p /tmp/traffic_results
-          rm -f /tmp/traffic_results/*
-          
-          # Собираем прокси для трафик теста
-          > /tmp/traffic_servers.txt
-          > /tmp/traffic_ports.txt
-          > /tmp/traffic_lines.txt
-          
-          total=0
-          
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ "$line" == "proxies:" ]] && continue
-            [[ -z "$line" ]] && continue
-            
-            url="${line#  - }"
-            
-            # Парсим сервер и порт
-            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
-            server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
-            
-            if [ -z "$server" ] || [ -z "$port" ]; then
-              continue
-            fi
-            
-            total=$((total + 1))
-            
-            echo "$server" >> /tmp/traffic_servers.txt
-            echo "$port" >> /tmp/traffic_ports.txt
-            echo "$line" >> /tmp/traffic_lines.txt
-            
-          done < ping.yaml
-          
-          echo "Total proxies for traffic test: $total"
-          echo "Starting parallel traffic test (10 at a time)..."
-          
-          # Функция для проверки трафика
-          traffic_proxy() {
-            local idx=$1
-            local server=$(sed -n "${idx}p" /tmp/traffic_servers.txt)
-            local port=$(sed -n "${idx}p" /tmp/traffic_ports.txt)
-            local line=$(sed -n "${idx}p" /tmp/traffic_lines.txt)
-            
-            # Проверка трафика через прокси
-            if curl --socks5-hostname "$server:$port" \
-                    -s -o /dev/null -w "%{http_code}" \
-                    --max-time 5 \
-                    "http://www.gstatic.com/generate_204" 2>/dev/null | grep -q "204"; then
-              echo "$line" >> "/tmp/traffic_results/passed_${idx}.txt"
-              echo "✅ $server:$port - passed"
-            else
-              echo "❌ $server:$port - failed"
-            fi
-          }
-          
-          export -f traffic_proxy
-          
-          # Запускаем параллельно (10 потоков)
-          seq 1 $total | xargs -P 10 -I {} bash -c 'traffic_proxy "$@"' _ {}
-          
-          # Собираем все успешные результаты
-          if [ -d /tmp/traffic_results ]; then
-            cat /tmp/traffic_results/*.txt >> traff.yaml 2>/dev/null || true
+          if [ -f /tmp/traffic_passed.txt ]; then
+            while IFS= read -r url; do
+              echo "  - $url" >> traff.yaml
+            done < /tmp/traffic_passed.txt
           fi
           
-          passed_count=$(grep -c '^-' traff.yaml || echo 0)
+          # Безопасный подсчёт
+          passed=$(grep -c '^-' traff.yaml || echo 0)
+          passed=${passed:-0}
           
           echo ""
           echo "=== TRAFFIC TEST RESULTS ==="
-          echo "Total tested: $total"
-          echo "✅ Passed traffic: $passed_count"
-          echo "❌ Failed traffic: $((total - passed_count))"
-          
-          rm -rf /tmp/traffic_servers.txt /tmp/traffic_ports.txt /tmp/traffic_lines.txt /tmp/traffic_results
+          echo "Total tested: $total_proxies"
+          echo "✅ Passed traffic: $passed"
+          echo "❌ Failed traffic: $((total_proxies - passed))"
 
       # ===== ШАГ 4: SPEED TEST + TOP 100 → clash.yaml =====
       - name: Speed test - select TOP 100 to clash.yaml
@@ -408,12 +383,23 @@ jobs:
             echo "proxies:" > clash.yaml
           fi
           
+          # Безопасный подсчёт для статистики
+          all_count=$(grep -c '^-' all_proxies.yaml || echo 0)
+          ping_count=$(grep -c '^-' ping.yaml || echo 0)
+          traff_count=$(grep -c '^-' traff.yaml || echo 0)
+          clash_count=$(grep -c '^- name:' clash.yaml || echo 0)
+          
+          all_count=${all_count:-0}
+          ping_count=${ping_count:-0}
+          traff_count=${traff_count:-0}
+          clash_count=${clash_count:-0}
+          
           echo ""
           echo "=== FINAL STATISTICS ==="
-          echo "all_proxies.yaml: $(grep -c '^-' all_proxies.yaml || echo 0) total"
-          echo "ping.yaml: $(grep -c '^-' ping.yaml || echo 0) after ping test"
-          echo "traff.yaml: $(grep -c '^-' traff.yaml || echo 0) after traffic test"
-          echo "clash.yaml: $(grep -c '^- name:' clash.yaml || echo 0) TOP 100"
+          echo "all_proxies.yaml: $all_count total"
+          echo "ping.yaml: $ping_count after ping test"
+          echo "traff.yaml: $traff_count after traffic test"
+          echo "clash.yaml: $clash_count TOP 100"
           
           rm -f /tmp/speed_results.txt
 
@@ -431,7 +417,17 @@ jobs:
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Безопасный подсчёт для сообщения коммита
+          ping_count=$(grep -c '^-' ping.yaml || echo 0)
+          traff_count=$(grep -c '^-' traff.yaml || echo 0)
+          clash_count=$(grep -c '^- name:' clash.yaml || echo 0)
+          
+          ping_count=${ping_count:-0}
+          traff_count=${traff_count:-0}
+          clash_count=${clash_count:-0}
+          
           git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
-          git commit -m "Update proxies $(date) - P:$(grep -c '^-' ping.yaml || echo 0) T:$(grep -c '^-' traff.yaml || echo 0) C:$(grep -c '^- name:' clash.yaml || echo 0)"
+          git commit -m "Update proxies $(date) - P:${ping_count} T:${traff_count} C:${clash_count}"
           git push
           echo "Changes pushed successfully"
