@@ -66,6 +66,7 @@ jobs:
           echo "🔍 Processing collected data..."
           sed -i 's/vless:/\nvless:/g' temp.txt
 
+          # Исправлено: { sort | head; } 2>/dev/null для избежания Broken pipe
           grep -oE 'vless://[^[:space:]]+' temp.txt 2>/dev/null | \
             grep -v "%25" | \
             grep -E 'vless://[^@]+@[^:]+:[0-9]+' | \
@@ -73,11 +74,16 @@ jobs:
             grep -v "localhost" | \
             grep -v "🔒" | \
             awk 'length($0) > 40 && length($0) < 1200' | \
-            sort -u | \
-            head -n 10000 | \
-            sed 's/^/  - /' >> all_proxies.yaml || true
+            { sort -u | head -n 10000; } 2>/dev/null | \
+            sed 's/^/  - /' >> all_proxies.yaml
 
           rm -f temp.txt
+          
+          # Явная проверка успеха
+          if ! grep -q '^  - ' all_proxies.yaml 2>/dev/null; then
+            echo "❌ No proxies collected after filtering"
+            exit 1
+          fi
           
           total_proxies=$(grep -c '^  - ' all_proxies.yaml 2>/dev/null || echo 0)
           echo "📦 STEP 1 COMPLETE: $total_proxies proxies collected"
@@ -92,7 +98,6 @@ jobs:
           mkdir -p /tmp/ping_test
           rm -f /tmp/ping_test/*
           
-          # Python-скрипт для парсинга URL
           cat > /tmp/parse_url.py << 'EOF'
           import urllib.parse, sys, re
           url = sys.argv[1]
@@ -127,7 +132,10 @@ jobs:
           done < all_proxies.yaml
           
           echo "📋 Total proxies to ping: $total"
-          [[ $total -eq 0 ]] && echo "⚠️ No valid proxies found" && exit 0
+          if [[ $total -eq 0 ]]; then
+            echo "⚠️ No valid proxies found"
+            exit 0
+          fi
           
           ping_proxy() {
             local idx=$1
@@ -138,13 +146,11 @@ jobs:
             local port=$(sed -n '2p' "$data_file")
             local line=$(sed -n '3p' "$data_file")
             
-            # Замер времени пинга
             local start_time=$(date +%s%N)
             if timeout 2 nc -zv "$server" "$port" 2>&1 | grep -qE "succeeded|open"; then
               local end_time=$(date +%s%N)
               local ping_time=$(( ($end_time - $start_time) / 1000000 ))
               
-              # Фильтр по пингу
               if [[ $ping_time -lt $PING_THRESHOLD_MS ]]; then
                 echo "${ping_time}|${line}" >> /tmp/ping_test/passed.txt
                 echo "✅ #$idx $server:$port - ${ping_time}ms"
@@ -162,8 +168,8 @@ jobs:
           seq 1 $total | xargs -P "$MAX_PARALLEL_PING" -I {} bash -c 'ping_proxy "$@"' _ {}
           
           if [ -f /tmp/ping_test/passed.txt ]; then
-            # Сортируем по пингу и берём лучшие
-            sort -n /tmp/ping_test/passed.txt | cut -d'|' -f2 | sed 's/^/  - /' >> ping.yaml
+            # Исправлено: { sort | head; } 2>/dev/null
+            { sort -n /tmp/ping_test/passed.txt | cut -d'|' -f2; } 2>/dev/null | sed 's/^/  - /' >> ping.yaml || true
           fi
           
           passed=$(grep -c '^  - ' ping.yaml 2>/dev/null || echo 0)
@@ -174,6 +180,11 @@ jobs:
           echo "   ✅ Passed (<${PING_THRESHOLD_MS}ms): $passed"
           echo "   ⏭️ Filtered (slow ping): $filtered"
           echo "   ❌ Failed (dead): $((total - passed - filtered))"
+          
+          # Проверка что файл не пустой
+          if ! grep -q '^  - ' ping.yaml 2>/dev/null; then
+            echo "⚠️ No proxies passed ping test"
+          fi
 
       # ===== ШАГ 3: ТРАФИК ТЕСТ + ЗАМЕР RESPONSE TIME =====
       - name: Traffic test with Xray - create traff.yaml
@@ -186,7 +197,6 @@ jobs:
           unzip -q "$XRAY_ZIP" -d xray/
           chmod +x xray/xray
           
-          # Python-скрипт для генерации конфига Xray (совместим с 3.8)
           cat > /tmp/xray_config_gen.py << 'EOF'
           import urllib.parse, json, sys
           url = sys.argv[1]
@@ -242,7 +252,6 @@ jobs:
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" || -z "$line" ]] && continue
             
-            # Извлекаем URL (убираем префикс и время пинга если есть)
             url=$(echo "$line" | sed 's/^[0-9]*|//; s/^  - //')
             total=$((total + 1))
             
@@ -261,7 +270,10 @@ jobs:
           done < ping.yaml
           
           echo "📋 Prepared $total proxies for traffic test"
-          [[ $total -eq 0 ]] && echo "⚠️ No proxies to test" && exit 0
+          if [[ $total -eq 0 ]]; then
+            echo "⚠️ No proxies to test"
+            exit 0
+          fi
           
           test_proxy_traffic() {
             local item="$1"
@@ -276,20 +288,17 @@ jobs:
             ./xray/xray -config "$config_file" > "$log_file" 2>&1 &
             local xray_pid=$!
             
-            # Быстрая проверка готовности порта (0.2 сек между попытками)
             for i in {1..20}; do
               if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then break; fi
               sleep 0.2
             done
             
-            # Проверка что процесс жив
             if ! kill -0 $xray_pid 2>/dev/null; then
               echo "❌ #$idx Xray died" >&2
               rm -f "$config_file" "$log_file"
               return 1
             fi
             
-            # Замер времени ответа
             local start_time=$(date +%s%N)
             local http_code
             http_code=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -304,7 +313,6 @@ jobs:
             rm -f "$config_file" "$log_file"
             
             if [[ "$http_code" == "204" ]]; then
-              # Фильтр по времени ответа
               if [[ $response_time -lt $RESPONSE_THRESHOLD_MS ]]; then
                 echo "${response_time}|${original_line}" > "$result_file"
                 echo "✅ #$idx passed (${response_time}ms)"
@@ -327,7 +335,8 @@ jobs:
           done
           
           if [ -f /tmp/xray_test/all_passed.txt ]; then
-            sort -n /tmp/xray_test/all_passed.txt | cut -d'|' -f2 | sed 's/^/  - /' >> traff.yaml
+            # Исправлено: { sort | head; } 2>/dev/null
+            { sort -n /tmp/xray_test/all_passed.txt | cut -d'|' -f2; } 2>/dev/null | sed 's/^/  - /' >> traff.yaml || true
           fi
           
           passed=$(grep -c '^  - ' traff.yaml 2>/dev/null || echo 0)
@@ -339,6 +348,10 @@ jobs:
           echo "   ⏭️ Filtered (slow response): $filtered"
           echo "   ❌ Failed (no traffic): $((total - passed - filtered))"
           
+          if ! grep -q '^  - ' traff.yaml 2>/dev/null; then
+            echo "⚠️ No proxies passed traffic test"
+          fi
+          
           # НЕ удаляем Xray здесь — нужен в Шаге 4!
 
       # ===== ШАГ 4: СОРТИРОВКА + TOP 100 + CLASH ФОРМАТ =====
@@ -347,7 +360,6 @@ jobs:
           set -euo pipefail
           echo "🎯 Selecting TOP 100 fastest proxies at $(date)"
           
-          # Python-скрипт для парсинга (совместим с 3.8)
           cat > /tmp/speed_parse.py << 'EOF'
           import urllib.parse, sys
           url = sys.argv[1]
@@ -370,19 +382,17 @@ jobs:
             echo "$1" | sed 's/[^a-zA-Z0-9.-]//g'
           }
           
-          > /tmp/speed_results.txt
+          echo "proxies:" > clash.yaml
           
           total=0
           measured=0
           
-          # Извлекаем прокси из traff.yaml (уже отсортированы по response time)
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" || -z "$line" ]] && continue
             
             url="${line#  - }"
             total=$((total + 1))
             
-            # Берём только TOP 100
             [[ $measured -ge 100 ]] && break
             
             parsed=$(python3 /tmp/speed_parse.py "$url" 2>/dev/null) || continue
@@ -434,7 +444,7 @@ jobs:
                   echo "        Host: \"$host\""
                 fi
               fi
-            } >> clash.yaml.tmp
+            } >> clash.yaml
             
             measured=$((measured + 1))
             echo "[$measured/100] Added: $name"
@@ -446,10 +456,8 @@ jobs:
           echo "   Processed: $total"
           echo "   ✅ Added to clash.yaml: $measured"
           
-          echo "proxies:" > clash.yaml
-          if [ -f clash.yaml.tmp ]; then
-            cat clash.yaml.tmp >> clash.yaml
-            rm -f clash.yaml.tmp
+          if ! grep -q '^- name:' clash.yaml 2>/dev/null; then
+            echo "⚠️ clash.yaml is empty"
           fi
 
       # ===== ШАГ 5: СТАТИСТИКА =====
@@ -463,14 +471,26 @@ jobs:
           traff_count=$(grep -c '^  - ' traff.yaml 2>/dev/null || echo 0)
           clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
           
-          echo "📁 all_proxies.yaml: $all_count (after collection)"
+          echo "📁 all_proxies.yaml: $all_count (after format validation)"
           echo "📁 ping.yaml:        $ping_count (after ping <${PING_THRESHOLD_MS}ms)"
           echo "📁 traff.yaml:       $traff_count (after traffic <${RESPONSE_THRESHOLD_MS}ms)"
           echo "📁 clash.yaml:       $clash_count (TOP 100 fastest)"
           
-          ping_rate=$(awk "BEGIN {printf \"%.1f\", ($ping_count/$all_count)*100}")
-          traff_rate=$(awk "BEGIN {printf \"%.1f\", ($traff_count/$ping_count)*100}")
-          clash_rate=$(awk "BEGIN {printf \"%.1f\", ($clash_count/$traff_count)*100}")
+          if [[ $all_count -gt 0 ]]; then
+            ping_rate=$(awk "BEGIN {printf \"%.1f\", ($ping_count/$all_count)*100}")
+          else
+            ping_rate="0.0"
+          fi
+          if [[ $ping_count -gt 0 ]]; then
+            traff_rate=$(awk "BEGIN {printf \"%.1f\", ($traff_count/$ping_count)*100}")
+          else
+            traff_rate="0.0"
+          fi
+          if [[ $traff_count -gt 0 ]]; then
+            clash_rate=$(awk "BEGIN {printf \"%.1f\", ($clash_count/$traff_count)*100}")
+          else
+            clash_rate="0.0"
+          fi
           
           echo ""
           echo "📈 Conversion rates:"
@@ -480,7 +500,7 @@ jobs:
           
           echo ""
           echo "🔍 Sample from clash.yaml (first 2 proxies):"
-          head -n 40 clash.yaml | grep -A 12 "^  - name:" | head -n 24 || echo "(empty)"
+          head -n 40 clash.yaml 2>/dev/null | grep -A 12 "^  - name:" | head -n 24 || echo "(empty)"
 
       # ===== ШАГ 6: COMMIT И PUSH =====
       - name: Commit and Push
