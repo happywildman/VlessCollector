@@ -22,7 +22,6 @@ jobs:
           sudo apt-get install -y jq python3 python3-pip netcat-openbsd
           pip3 install pyyaml -q
 
-      # ===== ШАГ 1: СБОР ВСЕХ ПРОКСИ =====
       - name: Collect and Strict Clean Vless
         run: |
           set -e
@@ -80,7 +79,6 @@ jobs:
           total_proxies=$(grep -c '^-' all_proxies.yaml || echo 0)
           echo "Found $total_proxies proxies"
 
-      # ===== ШАГ 2: ПИНГ ТЕСТ =====
       - name: Ping test - create ping.yaml
         run: |
           set -e
@@ -171,7 +169,6 @@ jobs:
           
           rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
-      # ===== ШАГ 3: ТРАФИК ТЕСТ ЧЕРЕЗ XRAY =====
       - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
@@ -193,50 +190,21 @@ jobs:
           rm -f /tmp/xray_results/*
           > /tmp/xray_queue.txt
           
-          # Создаём Python-скрипт для генерации конфига (отдельный файл)
-          cat > /tmp/gen_xray_config.py << 'PYEOF'
-import json
-import sys
-
-server = sys.argv[1]
-port = sys.argv[2]
-uuid = sys.argv[3]
-network = sys.argv[4]
-security = sys.argv[5]
-sni = sys.argv[6]
-host = sys.argv[7]
-path = sys.argv[8]
-flow = sys.argv[9]
-
-user = {"id": uuid}
-if flow:
-    user["flow"] = flow
-
-config = {
-    "log": {"loglevel": "none"},
-    "inbounds": [{"port": 1080, "protocol": "socks", "settings": {"auth": "noauth"}}],
-    "outbounds": [{
-        "protocol": "vless",
-        "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]},
-        "streamSettings": {"network": network, "security": security}
-    }]
-}
-
-if security != "none":
-    config["outbounds"][0]["streamSettings"]["tlsSettings"] = {
-        "serverName": sni if sni else server,
-        "allowInsecure": False
-    }
-
-if network == "ws":
-    ws = {"path": path} if path else {}
-    if host:
-        ws["headers"] = {"Host": host}
-    config["outbounds"][0]["streamSettings"]["wsSettings"] = ws
-
-print(json.dumps(config))
-PYEOF
-
+          # Создаём Python-скрипт через echo (без heredoc)
+          echo 'import json, sys' > /tmp/gen_xray_config.py
+          echo 'server, port, uuid = sys.argv[1], sys.argv[2], sys.argv[3]' >> /tmp/gen_xray_config.py
+          echo 'network, security = sys.argv[4], sys.argv[5]' >> /tmp/gen_xray_config.py
+          echo 'sni, host, path, flow = sys.argv[6], sys.argv[7], sys.argv[8], sys.argv[9]' >> /tmp/gen_xray_config.py
+          echo 'user = {"id": uuid}' >> /tmp/gen_xray_config.py
+          echo 'if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
+          echo 'config = {"log": {"loglevel": "none"}, "inbounds": [{"port": 1080, "protocol": "socks", "settings": {"auth": "noauth"}}], "outbounds": [{"protocol": "vless", "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]}, "streamSettings": {"network": network, "security": security}}]}' >> /tmp/gen_xray_config.py
+          echo 'if security != "none": config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": False}' >> /tmp/gen_xray_config.py
+          echo 'if network == "ws":' >> /tmp/gen_xray_config.py
+          echo '    ws = {"path": path} if path else {}' >> /tmp/gen_xray_config.py
+          echo '    if host: ws["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
+          echo '    config["outbounds"][0]["streamSettings"]["wsSettings"] = ws' >> /tmp/gen_xray_config.py
+          echo 'print(json.dumps(config))' >> /tmp/gen_xray_config.py
+          
           total=0
           
           while IFS= read -r line || [ -n "$line" ]; do
@@ -331,7 +299,6 @@ PYEOF
           echo "✅ Passed traffic: $passed"
           echo "❌ Failed traffic: $((total - passed))"
 
-      # ===== ШАГ 4: SPEED TEST + TOP 100 =====
       - name: Speed test - select TOP 100 to clash.yaml
         run: |
           set -e
