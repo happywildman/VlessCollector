@@ -831,14 +831,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "193.233.231.221-443-03dd7e7c"
-    type: vless
-    server: "193.233.231.221"
-    port: 443
-    uuid: "03dd7e7c-8d2a-4cd2-b920-f5ed564fc8c4"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "193.233.231.221-448-03dd7e7c"
     type: vless
     server: "193.233.231.221"
@@ -1095,6 +1087,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.21.6.159-80-077a4330"
+    type: vless
+    server: "104.21.6.159"
+    port: 80
+    uuid: "077a4330-7cb0-4d4b-8feb-7ceb3cd43f69"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "172.67.135.201-80-077a4330"
     type: vless
     server: "172.67.135.201"
@@ -1348,6 +1348,14 @@ proxies:
     server: "47.82.2.59"
     port: 40070
     uuid: "0a2ca46b-7557-432e-a31a-af39b9f9bddd"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "31.56.205.56-20553-0a542d0e"
+    type: vless
+    server: "31.56.205.56"
+    port: 20553
+    uuid: "0a542d0e-4d05-418f-97c2-94d0455005da"
     network: "tcp"
     tls: false
     udp: true
@@ -1788,6 +1796,14 @@ proxies:
     server: "ilta-wzxrxkdhbjpnprhkkpplsjwawhssvollvxzdhqshiqckwdgrdm.orbnet.xyz"
     port: 443
     uuid: "0e8a6896-ad90-4a3b-89a3-77d64aa409e2"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "ger.mika4456gg.site-57070-0e942494"
+    type: vless
+    server: "ger.mika4456gg.site"
+    port: 57070
+    uuid: "0e942494-a805-478d-8b26-3679f603db76"
     network: "tcp"
     tls: false
     udp: true
@@ -2327,6 +2343,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.21.76.174-80-13ad36e6"
+    type: vless
+    server: "104.21.76.174"
+    port: 80
+    uuid: "13ad36e6-c091-43f2-8505-47d868dd544c"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "172.67.141.220-80-13ad36e6"
     type: vless
     server: "172.67.141.220"
@@ -2340,6 +2364,14 @@ proxies:
     server: "172.67.197.251"
     port: 80
     uuid: "13ad36e6-c091-43f2-8505-47d868dd544c"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.16.164.243-80-143acd5a"
+    type: vless
+    server: "104.16.164.243"
+    port: 80
+    uuid: "143acd5a-9d9f-4616-a8fe-5fae4804292b"
     network: "tcp"
     tls: false
     udp: true
@@ -2367,14 +2399,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "178.253.43.200-2040-14818654"
-    type: vless
-    server: "178.253.43.200"
-    port: 2040
-    uuid: "14818654-7689-453a-9a1f-4c72f89782d5"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "64.188.117.71-2040-14818654"
     type: vless
     server: "64.188.117.71"
@@ -2383,17 +2407,17 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "77.239.100.161-2040-14818654"
+  - name: "74.119.192.243-2040-14818654"
     type: vless
-    server: "77.239.100.161"
+    server: "74.119.192.243"
     port: 2040
     uuid: "14818654-7689-453a-9a1f-4c72f89782d5"
     network: "tcp"
     tls: false
     udp: true
-  - name: "77.239.103.29-2040-14818654"
+  - name: "77.239.100.161-2040-14818654"
     type: vless
-    server: "77.239.103.29"
+    server: "77.239.100.161"
     port: 2040
     uuid: "14818654-7689-453a-9a1f-4c72f89782d5"
     network: "tcp"
@@ -2471,14 +2495,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "77.83.245.62-30658-14c2c571"
-    type: vless
-    server: "77.83.245.62"
-    port: 30658
-    uuid: "14c2c571-5939-4ed8-81b4-465326c9f436"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "104.21.80.5-80-14e1775b"
     type: vless
     server: "104.21.80.5"
@@ -2524,14 +2540,6 @@ proxies:
     server: "doprax.fxgoldensignals.com"
     port: 58153
     uuid: "14fe2c89-af11-4b7d-cc08-9641f0f2d8ee"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "72.56.105.125-443-1500c3af"
-    type: vless
-    server: "72.56.105.125"
-    port: 443
-    uuid: "1500c3af-f77f-4074-88e3-5711580c165d"
     network: "tcp"
     tls: false
     udp: true
@@ -3015,33 +3023,17 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "193.151.136.124-47992-1aca480e"
+    type: vless
+    server: "193.151.136.124"
+    port: 47992
+    uuid: "1aca480e-8011-4060-9fbe-5f00ff8d8231"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "151.241.173.62-4444-1b0ad61b"
     type: vless
     server: "151.241.173.62"
-    port: 4444
-    uuid: "1b0ad61b-1be2-4cda-9979-984a965b0da5"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "162.248.166.66-4444-1b0ad61b"
-    type: vless
-    server: "162.248.166.66"
-    port: 4444
-    uuid: "1b0ad61b-1be2-4cda-9979-984a965b0da5"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "162.248.166.74-4444-1b0ad61b"
-    type: vless
-    server: "162.248.166.74"
-    port: 4444
-    uuid: "1b0ad61b-1be2-4cda-9979-984a965b0da5"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "185.21.9.90-4444-1b0ad61b"
-    type: vless
-    server: "185.21.9.90"
     port: 4444
     uuid: "1b0ad61b-1be2-4cda-9979-984a965b0da5"
     network: "tcp"
@@ -3131,6 +3123,14 @@ proxies:
     type: vless
     server: "158.160.136.187"
     port: 2086
+    uuid: "1c29176e-96f0-461c-a3ea-21e8007c07c8"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "158.160.136.187-2089-1c29176e"
+    type: vless
+    server: "158.160.136.187"
+    port: 2089
     uuid: "1c29176e-96f0-461c-a3ea-21e8007c07c8"
     network: "tcp"
     tls: false
@@ -3735,25 +3735,9 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "meow-msc.nethcloud.top-8443-21915536"
+  - name: "meow-nsk.nethcloud.top-8443-21915536"
     type: vless
-    server: "meow-msc.nethcloud.top"
-    port: 8443
-    uuid: "21915536-afb5-4a0c-b047-fcf549d3a173"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "meow-pari.nethcloud.top-8443-21915536"
-    type: vless
-    server: "meow-pari.nethcloud.top"
-    port: 8443
-    uuid: "21915536-afb5-4a0c-b047-fcf549d3a173"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "meow-spb.nethcloud.top-8443-21915536"
-    type: vless
-    server: "meow-spb.nethcloud.top"
+    server: "meow-nsk.nethcloud.top"
     port: 8443
     uuid: "21915536-afb5-4a0c-b047-fcf549d3a173"
     network: "tcp"
@@ -3762,6 +3746,14 @@ proxies:
   - name: "poland-meow.nethcloud.top-8443-21915536"
     type: vless
     server: "poland-meow.nethcloud.top"
+    port: 8443
+    uuid: "21915536-afb5-4a0c-b047-fcf549d3a173"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "wash-meow.nethcloud.top-8443-21915536"
+    type: vless
+    server: "wash-meow.nethcloud.top"
     port: 8443
     uuid: "21915536-afb5-4a0c-b047-fcf549d3a173"
     network: "tcp"
@@ -4151,6 +4143,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "gfnfhyhttgbrtgbrtgbrtttyht7.arenafile.com-33431-26bc3af4"
+    type: vless
+    server: "gfnfhyhttgbrtgbrtgbrtttyht7.arenafile.com"
+    port: 33431
+    uuid: "26bc3af4-2ab1-4539-9580-bda4765cfbcb"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "194.87.219.24-28723-26c4884d"
     type: vless
     server: "194.87.219.24"
@@ -4188,6 +4188,14 @@ proxies:
     server: "172.239.240.91"
     port: 46240
     uuid: "2762ce23-74a4-4673-a0f1-2387c1b6cf68"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "198.41.222.50-8080-27950cc1"
+    type: vless
+    server: "198.41.222.50"
+    port: 8080
+    uuid: "27950cc1-85b4-4ecc-ad3a-4507360504af"
     network: "tcp"
     tls: false
     udp: true
@@ -4439,14 +4447,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "104.16.9.24-80-2ac6e527"
-    type: vless
-    server: "104.16.9.24"
-    port: 80
-    uuid: "2ac6e527-6410-48ce-b9ba-cc8135ee2a3b"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "handsome-device.oneeat.co-80-2ad87f95"
     type: vless
     server: "handsome-device.oneeat.co"
@@ -4532,6 +4532,14 @@ proxies:
     server: "51.250.4.181"
     port: 9090
     uuid: "2cd0a537-d5b6-43a4-9d6a-fa3f3b500ee0"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "vip-80.f-sub.cfd-1517-2d24ec31"
+    type: vless
+    server: "vip-80.f-sub.cfd"
+    port: 1517
+    uuid: "2d24ec31-1902-4c43-b8dc-8fd40f81d674"
     network: "tcp"
     tls: false
     udp: true
@@ -4684,6 +4692,14 @@ proxies:
     server: "95.141.205.39"
     port: 7557
     uuid: "2e3bb27c-ab28-4ddb-9e33-7c5874b4d25a"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.24.45.247-80-2e71d8fc"
+    type: vless
+    server: "104.24.45.247"
+    port: 80
+    uuid: "2e71d8fc-d2e8-44fc-89bd-c8a449a193aa"
     network: "tcp"
     tls: false
     udp: true
@@ -5079,30 +5095,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "meow-msc.nethcloud.top-8443-32c4e504"
-    type: vless
-    server: "meow-msc.nethcloud.top"
-    port: 8443
-    uuid: "32c4e504-bf97-48d1-84b8-62763064b339"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "meow-pari.nethcloud.top-8443-32c4e504"
-    type: vless
-    server: "meow-pari.nethcloud.top"
-    port: 8443
-    uuid: "32c4e504-bf97-48d1-84b8-62763064b339"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "meow-spb.nethcloud.top-8443-32c4e504"
-    type: vless
-    server: "meow-spb.nethcloud.top"
-    port: 8443
-    uuid: "32c4e504-bf97-48d1-84b8-62763064b339"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "wash-meow.nethcloud.top-8443-32c4e504"
     type: vless
     server: "wash-meow.nethcloud.top"
@@ -5287,14 +5279,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "maxa19.box11x0.ir-2096-34228fd2"
-    type: vless
-    server: "maxa19.box11x0.ir"
-    port: 2096
-    uuid: "34228fd2-9a65-4bc2-9d10-1573a276ed10"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "45.131.108.191-8443-3432abbc"
     type: vless
     server: "45.131.108.191"
@@ -5423,6 +5407,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "47.82.102.174-12201-37073025"
+    type: vless
+    server: "47.82.102.174"
+    port: 12201
+    uuid: "37073025-44a1-45d8-bbcc-af3ed8e9c046"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "fn.takovpn.ru-443-373a56eb"
     type: vless
     server: "fn.takovpn.ru"
@@ -5548,6 +5540,14 @@ proxies:
     server: "55ae6e1c3bffa10e.speedtest.net"
     port: 80
     uuid: "3af4acb2-3c3d-44c4-b3bd-e3cb950a99b4"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "31.56.205.56-57124-3af5f9c4"
+    type: vless
+    server: "31.56.205.56"
+    port: 57124
+    uuid: "3af5f9c4-9128-41f2-bc56-a927788d12f8"
     network: "tcp"
     tls: false
     udp: true
@@ -6119,14 +6119,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "92.60.74.56-80-43158d39"
-    type: vless
-    server: "92.60.74.56"
-    port: 80
-    uuid: "43158d39-8066-4df4-b74e-2ab29f207e0a"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "104.16.191.59-80-435bda4c"
     type: vless
     server: "104.16.191.59"
@@ -6138,6 +6130,14 @@ proxies:
   - name: "104.16.247.171-80-435bda4c"
     type: vless
     server: "104.16.247.171"
+    port: 80
+    uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.16.69.245-80-435bda4c"
+    type: vless
+    server: "104.16.69.245"
     port: 80
     uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
     network: "tcp"
@@ -6303,6 +6303,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.17.164.199-80-435bda4c"
+    type: vless
+    server: "104.17.164.199"
+    port: 80
+    uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "104.17.164.204-80-435bda4c"
     type: vless
     server: "104.17.164.204"
@@ -6370,6 +6378,14 @@ proxies:
   - name: "104.17.211.234-80-435bda4c"
     type: vless
     server: "104.17.211.234"
+    port: 80
+    uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.17.217.236-80-435bda4c"
+    type: vless
+    server: "104.17.217.236"
     port: 80
     uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
     network: "tcp"
@@ -6514,6 +6530,22 @@ proxies:
   - name: "104.18.91.56-80-435bda4c"
     type: vless
     server: "104.18.91.56"
+    port: 80
+    uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.18.92.0-80-435bda4c"
+    type: vless
+    server: "104.18.92.0"
+    port: 80
+    uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.18.93.33-80-435bda4c"
+    type: vless
+    server: "104.18.93.33"
     port: 80
     uuid: "435bda4c-fe5e-42c9-a3ad-15334943b38a"
     network: "tcp"
@@ -7679,9 +7711,17 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "104.21.60.191-80-4e45c1b4"
+  - name: "104.21.41.29-80-4e45c1b4"
     type: vless
-    server: "104.21.60.191"
+    server: "104.21.41.29"
+    port: 80
+    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.21.91.128-80-4e45c1b4"
+    type: vless
+    server: "104.21.91.128"
     port: 80
     uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
     network: "tcp"
@@ -7698,14 +7738,6 @@ proxies:
   - name: "172.64.80.1-80-4e45c1b4"
     type: vless
     server: "172.64.80.1"
-    port: 80
-    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "172.67.136.63-80-4e45c1b4"
-    type: vless
-    server: "172.67.136.63"
     port: 80
     uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
     network: "tcp"
@@ -7943,26 +7975,10 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "217.60.238.167-8084-5002c25a"
-    type: vless
-    server: "217.60.238.167"
-    port: 8084
-    uuid: "5002c25a-fe2a-4973-ad5c-d3b424e75ab6"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "45.84.157.14-9092-5002c25a"
     type: vless
     server: "45.84.157.14"
     port: 9092
-    uuid: "5002c25a-fe2a-4973-ad5c-d3b424e75ab6"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.84.157.54-5050-5002c25a"
-    type: vless
-    server: "45.84.157.54"
-    port: 5050
     uuid: "5002c25a-fe2a-4973-ad5c-d3b424e75ab6"
     network: "tcp"
     tls: false
@@ -8335,6 +8351,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "162.159.14.88-80-55cb8179"
+    type: vless
+    server: "162.159.14.88"
+    port: 80
+    uuid: "55cb8179-ce11-4ec8-a03c-333f797265f9"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "germany.fast.hosting-ip.com-80-55d7c587"
     type: vless
     server: "germany.fast.hosting-ip.com"
@@ -8394,14 +8418,6 @@ proxies:
   - name: "nl01.bearvpn.win-443-5797a04f"
     type: vless
     server: "nl01.bearvpn.win"
-    port: 443
-    uuid: "5797a04f-7636-46df-9354-fd74c2264a28"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "us01.bearvpn.win-443-5797a04f"
-    type: vless
-    server: "us01.bearvpn.win"
     port: 443
     uuid: "5797a04f-7636-46df-9354-fd74c2264a28"
     network: "tcp"
@@ -9095,9 +9111,9 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "172.64.155.209-2052-5e62ddcf"
+  - name: "162.159.36.5-2052-5e62ddcf"
     type: vless
-    server: "172.64.155.209"
+    server: "162.159.36.5"
     port: 2052
     uuid: "5e62ddcf-78c9-4b15-803a-436c8c839ddc"
     network: "tcp"
@@ -9148,14 +9164,6 @@ proxies:
     server: "103.215.221.219"
     port: 20425
     uuid: "5eb32d76-7b18-4e01-fa09-99fc5424712a"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "vip.api-tel.xyz-43151-5f0772ad"
-    type: vless
-    server: "vip.api-tel.xyz"
-    port: 43151
-    uuid: "5f0772ad-9db3-4cb0-b801-bd40f51fd3ea"
     network: "tcp"
     tls: false
     udp: true
@@ -9335,9 +9343,9 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "188.253.23.30-443-6202b230"
+  - name: "188.253.19.164-443-6202b230"
     type: vless
-    server: "188.253.23.30"
+    server: "188.253.19.164"
     port: 443
     uuid: "6202b230-417c-4d8e-b624-0f71afa9c75d"
     network: "tcp"
@@ -10343,6 +10351,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "173.245.59.190-80-6a3df9d6"
+    type: vless
+    server: "173.245.59.190"
+    port: 80
+    uuid: "6a3df9d6-7b68-444e-a6df-f01053912c30"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "104.31.16.104-80-6a3e9e9d"
     type: vless
     server: "104.31.16.104"
@@ -10927,6 +10943,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.17.25.132-80-73d17f62"
+    type: vless
+    server: "104.17.25.132"
+    port: 80
+    uuid: "73d17f62-d0c0-4c90-903c-a2b3f3806cca"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "104.19.151.106-80-73d17f62"
     type: vless
     server: "104.19.151.106"
@@ -10967,6 +10991,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "2.248.82.85-2197-75193bef"
+    type: vless
+    server: "2.248.82.85"
+    port: 2197
+    uuid: "75193bef-8d8f-e823-41e0-2dd083dc1399"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "78.67.63.98-2197-75193bef"
     type: vless
     server: "78.67.63.98"
@@ -10979,6 +11011,14 @@ proxies:
     type: vless
     server: "dd.openaccessnode.com"
     port: 2197
+    uuid: "75193bef-8d8f-e823-41e0-2dd083dc1399"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "dd.openaccessnode.com-50-75193bef"
+    type: vless
+    server: "dd.openaccessnode.com"
+    port: 50
     uuid: "75193bef-8d8f-e823-41e0-2dd083dc1399"
     network: "tcp"
     tls: false
@@ -11244,6 +11284,14 @@ proxies:
     server: "91.234.147.37"
     port: 6666
     uuid: "78793680-044c-46d7-8062-8ad3497476f6"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "chatgpt.com-80-787b3724"
+    type: vless
+    server: "chatgpt.com"
+    port: 80
+    uuid: "787b3724-16c8-4e58-a038-2b8013cdc6d9"
     network: "tcp"
     tls: false
     udp: true
@@ -11871,6 +11919,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.16.250.229-80-7d96f544"
+    type: vless
+    server: "104.16.250.229"
+    port: 80
+    uuid: "7d96f544-c496-41cf-dd61-337f0aff062a"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "104.16.254.100-80-7d96f544"
     type: vless
     server: "104.16.254.100"
@@ -12063,14 +12119,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "45.15.170.80-28495-7e296434"
-    type: vless
-    server: "45.15.170.80"
-    port: 28495
-    uuid: "7e296434-2d17-48d3-928d-19eaa34aecb1"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "77.91.74.189-28495-7e296434"
     type: vless
     server: "77.91.74.189"
@@ -12124,14 +12172,6 @@ proxies:
     server: "ardagulerturk.vtuix.space"
     port: 7035
     uuid: "7ee4671c-6b18-4574-8498-d6d7979218e5"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "135.125.168.181-778-7f1a0153"
-    type: vless
-    server: "135.125.168.181"
-    port: 778
-    uuid: "7f1a0153-beb0-b452-9d07-1cbb72a522f4"
     network: "tcp"
     tls: false
     udp: true
@@ -12711,6 +12751,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "chatgpt.com-80-860d8f27"
+    type: vless
+    server: "chatgpt.com"
+    port: 80
+    uuid: "860d8f27-ed60-4791-b6a0-e1e471d7ee6d"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "109.120.189.252-4241-8619e4c1"
     type: vless
     server: "109.120.189.252"
@@ -12802,14 +12850,6 @@ proxies:
   - name: "8.6.112.0-2095-86c50e3a"
     type: vless
     server: "8.6.112.0"
-    port: 2095
-    uuid: "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "www.csgo.net-2095-86c50e3a"
-    type: vless
-    server: "www.csgo.net"
     port: 2095
     uuid: "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
     network: "tcp"
@@ -14319,14 +14359,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "83.147.252.165-443-95e3a7e6"
-    type: vless
-    server: "83.147.252.165"
-    port: 443
-    uuid: "95e3a7e6-ff2b-4554-b107-8ff4c58b7981"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "fast.panelha.sbs-80-95f75825"
     type: vless
     server: "fast.panelha.sbs"
@@ -15415,14 +15447,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "185.171.202.30-33514-Telegram"
-    type: vless
-    server: "185.171.202.30"
-    port: 33514
-    uuid: "Telegramjoin = @digi_config"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "V2RAXX-channel.cataba.ir-2053-V2RAXX--"
     type: vless
     server: "V2RAXX-channel.cataba.ir"
@@ -15547,14 +15571,6 @@ proxies:
     type: vless
     server: "95.163.210.159"
     port: 80
-    uuid: "a001c9c4-ece2-4dc1-9658-cbad90fcd2e0"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "95.163.210.159-8443-a001c9c4"
-    type: vless
-    server: "95.163.210.159"
-    port: 8443
     uuid: "a001c9c4-ece2-4dc1-9658-cbad90fcd2e0"
     network: "tcp"
     tls: false
@@ -15831,6 +15847,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.18.14.19-80-a2af6e7c"
+    type: vless
+    server: "104.18.14.19"
+    port: 80
+    uuid: "a2af6e7c-a792-4e51-9460-fff4bd74fbfc"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "199.232.242.127-80-a2b35cb9"
     type: vless
     server: "199.232.242.127"
@@ -15868,14 +15892,6 @@ proxies:
     server: "104.16.171.121"
     port: 80
     uuid: "a3875c94-e968-404c-b62d-5a292d20e6d8"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "172.64.152.23-2095-a3c624bd"
-    type: vless
-    server: "172.64.152.23"
-    port: 2095
-    uuid: "a3c624bd-3183-4f66-b1d1-35914fc9867c"
     network: "tcp"
     tls: false
     udp: true
@@ -16111,6 +16127,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "104.16.149.66-80-a7444b2b"
+    type: vless
+    server: "104.16.149.66"
+    port: 80
+    uuid: "a7444b2b-20fb-461f-9840-63e5c8c7d883"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "45.144.214.133-2876-a76f16e8"
     type: vless
     server: "45.144.214.133"
@@ -16132,6 +16156,14 @@ proxies:
     server: "sw.izumii.ir"
     port: 8960
     uuid: "a77db921-bac9-4d8b-ae9a-5f8e2a134f45"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "104.18.15.19-80-a7e84660"
+    type: vless
+    server: "104.18.15.19"
+    port: 80
+    uuid: "a7e84660-8f5c-43ba-b635-cc394c5be4b9"
     network: "tcp"
     tls: false
     udp: true
@@ -16252,14 +16284,6 @@ proxies:
     server: "51.250.109.93"
     port: 443
     uuid: "a918d35f-14f2-4464-95e1-aee3bb69802e"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.248.37.51-443-a92ff4a9"
-    type: vless
-    server: "45.248.37.51"
-    port: 443
-    uuid: "a92ff4a9-8e31-4b8b-88c7-7c99454e25b6"
     network: "tcp"
     tls: false
     udp: true
@@ -16487,6 +16511,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "31.56.205.56-32480-af048307"
+    type: vless
+    server: "31.56.205.56"
+    port: 32480
+    uuid: "af048307-527c-4178-8d56-271ac082870b"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "18.192.122.141-32016-af07a5ea"
     type: vless
     server: "18.192.122.141"
@@ -16580,14 +16612,6 @@ proxies:
     server: "104.18.32.47"
     port: 80
     uuid: "b11a59d6-7a55-4f34-bb8e-f452f96a5cff"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "66.179.82.126-443-b1267991"
-    type: vless
-    server: "66.179.82.126"
-    port: 443
-    uuid: "b1267991-59ff-4b67-b141-97e3ced4e7c8"
     network: "tcp"
     tls: false
     udp: true
@@ -17935,9 +17959,25 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "5.188.224.136-2083-c501c66b"
+    type: vless
+    server: "5.188.224.136"
+    port: 2083
+    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "5.188.224.166-2083-c501c66b"
     type: vless
     server: "5.188.224.166"
+    port: 2083
+    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "79.174.93.162-2083-c501c66b"
+    type: vless
+    server: "79.174.93.162"
     port: 2083
     uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
     network: "tcp"
@@ -18071,6 +18111,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "85.158.109.103-443-c53b6d6d"
+    type: vless
+    server: "85.158.109.103"
+    port: 443
+    uuid: "c53b6d6d-3f81-44ce-945b-91fbb8836f46"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "62.60.233.57-33895-c5434982"
     type: vless
     server: "62.60.233.57"
@@ -18084,6 +18132,14 @@ proxies:
     server: "104.21.95.181"
     port: 80
     uuid: "c558328b-eb46-424c-b9e0-574770f0b072"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "gfnfhyhttgbrtgbrtgbrtttyht7.arenafile.com-33431-c55d1b40"
+    type: vless
+    server: "gfnfhyhttgbrtgbrtgbrtttyht7.arenafile.com"
+    port: 33431
+    uuid: "c55d1b40-5974-491a-bcea-9a03edbfd776"
     network: "tcp"
     tls: false
     udp: true
@@ -18471,6 +18527,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "cd.digitalvortex.ir-8080-cb332abe"
+    type: vless
+    server: "cd.digitalvortex.ir"
+    port: 8080
+    uuid: "cb332abe-d9d8-4823-b214-87b7bf2dbf10"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "25.26.27.28-2052-cb522244"
     type: vless
     server: "25.26.27.28"
@@ -18500,6 +18564,14 @@ proxies:
     server: "deadseectelegram.blackandwhiteshop.ir"
     port: 80
     uuid: "cbadfd29-8352-46e5-8baa-0010b43d1059"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "31.56.205.56-13612-cbb94bf1"
+    type: vless
+    server: "31.56.205.56"
+    port: 13612
+    uuid: "cbb94bf1-02cc-46ba-bc01-061b5f38e0ac"
     network: "tcp"
     tls: false
     udp: true
@@ -18735,6 +18807,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "www.visa.com.sg-2052-cdec8542"
+    type: vless
+    server: "www.visa.com.sg"
+    port: 2052
+    uuid: "cdec8542-a21f-4377-9da3-ea60bb6d3a30"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "143.20.37.17-443-ce247dd9"
     type: vless
     server: "143.20.37.17"
@@ -18788,14 +18868,6 @@ proxies:
     server: "www.speedtest.net"
     port: 2082
     uuid: "cecc46f0-55ce-46fb-ec65-b46eb9446e41"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "146.185.208.206-8443-cede58e4"
-    type: vless
-    server: "146.185.208.206"
-    port: 8443
-    uuid: "cede58e4-091f-4eb7-b9d5-9b892e85b291"
     network: "tcp"
     tls: false
     udp: true
@@ -18948,6 +19020,14 @@ proxies:
     server: "eco.nexun.ir"
     port: 80
     uuid: "cfac6bb3-fb6e-4a1a-a0df-02a095269d86"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "188.114.98.224-2095-cfb6d9ad"
+    type: vless
+    server: "188.114.98.224"
+    port: 2095
+    uuid: "cfb6d9ad-7a14-4061-b159-8902fd73bb55"
     network: "tcp"
     tls: false
     udp: true
@@ -19271,14 +19351,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "104.18.26.94-2052-d342d11e"
-    type: vless
-    server: "104.18.26.94"
-    port: 2052
-    uuid: "d342d11e-d424-4583-b36e-524ab1f0afa4"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "141.101.121.108-8080-d342d11e"
     type: vless
     server: "141.101.121.108"
@@ -19551,18 +19623,18 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "158.160.136.187-2088-d5226296"
+  - name: "158.160.136.187-1443-d5226296"
     type: vless
     server: "158.160.136.187"
-    port: 2088
+    port: 1443
     uuid: "d5226296-c3ec-435b-a1c8-a81c770b3c2a"
     network: "tcp"
     tls: false
     udp: true
-  - name: "158.160.136.187-2089-d5226296"
+  - name: "158.160.136.187-2088-d5226296"
     type: vless
     server: "158.160.136.187"
-    port: 2089
+    port: 2088
     uuid: "d5226296-c3ec-435b-a1c8-a81c770b3c2a"
     network: "tcp"
     tls: false
@@ -19823,14 +19895,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "64.23.143.23-34045-d8dd94fd"
-    type: vless
-    server: "64.23.143.23"
-    port: 34045
-    uuid: "d8dd94fd-540e-461d-b5d4-acebef02c22a"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "77.246.109.191-34045-d8dd94fd"
     type: vless
     server: "77.246.109.191"
@@ -19892,6 +19956,14 @@ proxies:
     server: "web.acangame.ir"
     port: 446
     uuid: "da188aa6-f6bb-4e4e-91b7-a5dafc1d4190"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "vip-84.f-sub.cfd-1517-da1e9656"
+    type: vless
+    server: "vip-84.f-sub.cfd"
+    port: 1517
+    uuid: "da1e9656-21fb-43d1-a1ab-0d2627b55758"
     network: "tcp"
     tls: false
     udp: true
@@ -20967,30 +21039,6 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "95.164.45.78-8880-df0680ca"
-    type: vless
-    server: "95.164.45.78"
-    port: 8880
-    uuid: "df0680ca-e43c-498d-ed86-8e196eedd012"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "95.164.45.85-8880-df0680ca"
-    type: vless
-    server: "95.164.45.85"
-    port: 8880
-    uuid: "df0680ca-e43c-498d-ed86-8e196eedd012"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "95.164.45.94-8880-df0680ca"
-    type: vless
-    server: "95.164.45.94"
-    port: 8880
-    uuid: "df0680ca-e43c-498d-ed86-8e196eedd012"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "95.164.6.149-8880-df0680ca"
     type: vless
     server: "95.164.6.149"
@@ -21012,14 +21060,6 @@ proxies:
     server: "209.38.222.192"
     port: 2096
     uuid: "dfee545b-6087-4f13-b2a3-41cc9642d583"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.144.52.222-443-e01c27ad"
-    type: vless
-    server: "45.144.52.222"
-    port: 443
-    uuid: "e01c27ad-aeb4-40cc-9288-5d0bd4419e11"
     network: "tcp"
     tls: false
     udp: true
@@ -21423,6 +21463,14 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
+  - name: "144.31.1.24-8443-e384913f"
+    type: vless
+    server: "144.31.1.24"
+    port: 8443
+    uuid: "e384913f-8863-47b4-8858-a84b68abb4a6"
+    network: "tcp"
+    tls: false
+    udp: true
   - name: "51.cdnconn.com-8443-e384913f"
     type: vless
     server: "51.cdnconn.com"
@@ -21436,6 +21484,14 @@ proxies:
     server: "9.cdnconn.com"
     port: 1443
     uuid: "e384913f-8863-47b4-8858-a84b68abb4a6"
+    network: "tcp"
+    tls: false
+    udp: true
+  - name: "198.41.222.191-80-e388fffb"
+    type: vless
+    server: "198.41.222.191"
+    port: 80
+    uuid: "e388fffb-03b0-4227-ac2c-2b5cec1f5c34"
     network: "tcp"
     tls: false
     udp: true
@@ -21527,41 +21583,9 @@ proxies:
     network: "tcp"
     tls: false
     udp: true
-  - name: "45.82.251.144-8880-e4824193"
-    type: vless
-    server: "45.82.251.144"
-    port: 8880
-    uuid: "e4824193-4f54-453b-d037-88368e85ef0e"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.82.251.161-8880-e4824193"
-    type: vless
-    server: "45.82.251.161"
-    port: 8880
-    uuid: "e4824193-4f54-453b-d037-88368e85ef0e"
-    network: "tcp"
-    tls: false
-    udp: true
   - name: "45.82.251.180-8880-e4824193"
     type: vless
     server: "45.82.251.180"
-    port: 8880
-    uuid: "e4824193-4f54-453b-d037-88368e85ef0e"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.82.251.183-8880-e4824193"
-    type: vless
-    server: "45.82.251.183"
-    port: 8880
-    uuid: "e4824193-4f54-453b-d037-88368e85ef0e"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.82.251.185-8880-e4824193"
-    type: vless
-    server: "45.82.251.185"
     port: 8880
     uuid: "e4824193-4f54-453b-d037-88368e85ef0e"
     network: "tcp"
@@ -21628,14 +21652,6 @@ proxies:
     server: "151.101.9.81"
     port: 80
     uuid: "e4a6331b-e3e7-4f4e-b46a-8c31bf44bf83"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "45.11.187.120-2020-e4bd3863"
-    type: vless
-    server: "45.11.187.120"
-    port: 2020
-    uuid: "e4bd3863-ef9f-4e39-9478-2003575d3380"
     network: "tcp"
     tls: false
     udp: true
@@ -23538,14 +23554,6 @@ proxies:
   - name: "193.151.158.91-9000-fe08cb95"
     type: vless
     server: "193.151.158.91"
-    port: 9000
-    uuid: "fe08cb95-a7bd-48d3-b3e8-e083ab8cd9bc"
-    network: "tcp"
-    tls: false
-    udp: true
-  - name: "193.151.158.92-9000-fe08cb95"
-    type: vless
-    server: "193.151.158.92"
     port: 9000
     uuid: "fe08cb95-a7bd-48d3-b3e8-e083ab8cd9bc"
     network: "tcp"
