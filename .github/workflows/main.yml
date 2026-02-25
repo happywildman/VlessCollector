@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ===== ШАГ 1: СБОР ВСЕХ ПРОКСИ (ЭТАЛОН) =====
+      # ===== ШАГ 1: СБОР ВСЕХ ПРОКСИ =====
       - name: Collect and Strict Clean Vless
         run: |
           set -e
@@ -74,7 +74,7 @@ jobs:
           total_proxies=$(grep -c '^-' all_proxies.yaml || echo 0)
           echo "Found $total_proxies proxies"
 
-      # ===== ШАГ 2: ПИНГ ТЕСТ (ПАРАЛЛЕЛЬНО) → ping.yaml =====
+      # ===== ШАГ 2: ПИНГ ТЕСТ =====
       - name: Ping test - create ping.yaml
         run: |
           set -e
@@ -165,7 +165,7 @@ jobs:
           
           rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
-      # ===== ШАГ 3: ТРАФИК ТЕСТ (ЧЕРЕЗ XRAY) → traff.yaml =====
+      # ===== ШАГ 3: ТРАФИК ТЕСТ ЧЕРЕЗ XRAY =====
       - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
@@ -188,8 +188,6 @@ jobs:
           mkdir -p /tmp/xray_results
           rm -f /tmp/xray_results/*
           
-          > /tmp/xray_servers.txt
-          > /tmp/xray_ports.txt
           > /tmp/xray_lines.txt
           > /tmp/xray_configs.txt
           
@@ -203,7 +201,7 @@ jobs:
             url="${line#  - }"
             total=$((total + 1))
             
-            # Парсим параметры для Xray конфига
+            # Парсим параметры
             uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
             uuid=$(urldecode "$uuid_encoded" | sed 's/[^a-zA-Z0-9-]//g')
             
@@ -234,8 +232,9 @@ jobs:
               done
             fi
             
-            # Создаём Xray конфиг
-            cat > "/tmp/xray_config_${total}.json" << EOF
+            # Создаём Xray конфиг (используем EOF без кавычек)
+            config_file="/tmp/xray_config_${total}.json"
+            cat > "$config_file" << EOF
 {
   "log": {"loglevel": "none"},
   "inbounds": [{
@@ -262,7 +261,7 @@ jobs:
 }
 EOF
             echo "$line" >> /tmp/xray_lines.txt
-            echo "/tmp/xray_config_${total}.json" >> /tmp/xray_configs.txt
+            echo "$config_file" >> /tmp/xray_configs.txt
             
           done < ping.yaml
           
@@ -276,13 +275,13 @@ EOF
             local line=$(sed -n "${idx}p" /tmp/xray_lines.txt)
             
             # Запускаем Xray
-            ./xray/xray -config "$config_file" > /tmp/xray_log_${idx}.txt 2>&1 &
+            ./xray/xray -config "$config_file" > /dev/null 2>&1 &
             XRAY_PID=$!
             
             # Даём время на запуск
             sleep 1
             
-            # Пробуем подключиться через локальный SOCKS5 прокси Xray
+            # Проверяем через локальный SOCKS5
             if curl --socks5-hostname 127.0.0.1:1080 \
                     -s -o /dev/null -w "%{http_code}" \
                     --max-time 5 \
@@ -296,8 +295,6 @@ EOF
             # Убиваем Xray
             kill $XRAY_PID 2>/dev/null || true
             wait $XRAY_PID 2>/dev/null || true
-            
-            rm -f "$config_file" "/tmp/xray_log_${idx}.txt"
           }
           
           export -f test_xray_proxy
@@ -323,7 +320,7 @@ EOF
           
           rm -rf /tmp/xray_* /tmp/xray_results xray/ Xray-linux-64.zip
 
-      # ===== ШАГ 4: SPEED TEST + TOP 100 → clash.yaml =====
+      # ===== ШАГ 4: SPEED TEST + TOP 100 =====
       - name: Speed test - select TOP 100 to clash.yaml
         run: |
           set -e
