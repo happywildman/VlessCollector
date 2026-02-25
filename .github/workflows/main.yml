@@ -66,7 +66,7 @@ jobs:
           echo "🔍 Processing collected data..."
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Исправлено: { sort | head; } 2>/dev/null для избежания Broken pipe
+          # Исправлено: || true в конце для обработки SIGPIPE от sort
           grep -oE 'vless://[^[:space:]]+' temp.txt 2>/dev/null | \
             grep -v "%25" | \
             grep -E 'vless://[^@]+@[^:]+:[0-9]+' | \
@@ -75,7 +75,7 @@ jobs:
             grep -v "🔒" | \
             awk 'length($0) > 40 && length($0) < 1200' | \
             { sort -u | head -n 10000; } 2>/dev/null | \
-            sed 's/^/  - /' >> all_proxies.yaml
+            sed 's/^/  - /' >> all_proxies.yaml || true
 
           rm -f temp.txt
           
@@ -168,7 +168,7 @@ jobs:
           seq 1 $total | xargs -P "$MAX_PARALLEL_PING" -I {} bash -c 'ping_proxy "$@"' _ {}
           
           if [ -f /tmp/ping_test/passed.txt ]; then
-            # Исправлено: { sort | head; } 2>/dev/null
+            # Исправлено: || true в конце для обработки SIGPIPE
             { sort -n /tmp/ping_test/passed.txt | cut -d'|' -f2; } 2>/dev/null | sed 's/^/  - /' >> ping.yaml || true
           fi
           
@@ -181,7 +181,6 @@ jobs:
           echo "   ⏭️ Filtered (slow ping): $filtered"
           echo "   ❌ Failed (dead): $((total - passed - filtered))"
           
-          # Проверка что файл не пустой
           if ! grep -q '^  - ' ping.yaml 2>/dev/null; then
             echo "⚠️ No proxies passed ping test"
           fi
@@ -335,7 +334,7 @@ jobs:
           done
           
           if [ -f /tmp/xray_test/all_passed.txt ]; then
-            # Исправлено: { sort | head; } 2>/dev/null
+            # Исправлено: || true в конце для обработки SIGPIPE
             { sort -n /tmp/xray_test/all_passed.txt | cut -d'|' -f2; } 2>/dev/null | sed 's/^/  - /' >> traff.yaml || true
           fi
           
@@ -351,8 +350,6 @@ jobs:
           if ! grep -q '^  - ' traff.yaml 2>/dev/null; then
             echo "⚠️ No proxies passed traffic test"
           fi
-          
-          # НЕ удаляем Xray здесь — нужен в Шаге 4!
 
       # ===== ШАГ 4: СОРТИРОВКА + TOP 100 + CLASH ФОРМАТ =====
       - name: Speed sort - select TOP 100 to clash.yaml
