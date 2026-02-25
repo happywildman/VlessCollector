@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: write
 
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ===== ШАГ 1: СБОР ВСЕХ ПРОКСИ =====
+      # ===== ШАГ 1: СБОР ВСЕХ ПРОКСИ (ЭТАЛОН) =====
       - name: Collect and Strict Clean Vless
         run: |
           set -e
@@ -55,10 +55,6 @@ jobs:
           echo "Processing collected data..."
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # Добавляем счетчик уникальных прокси
-          unique_count=$(grep -oE 'vless://[^[:space:]]+' temp.txt | sort -u | wc -l)
-          echo "Found $unique_count unique proxies before filtering"
-
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
@@ -74,24 +70,17 @@ jobs:
           rm -f temp.txt
           
           echo "Collection completed at $(date)"
-          echo "Final proxies in all_proxies.yaml: $(grep -c '^-' all_proxies.yaml || echo 0)"
+          echo "Found $(grep -c '^-' all_proxies.yaml || echo 0) proxies"
 
-      # ===== ШАГ 2: ПРОВЕРКА ПИНГ + ТРАФИК → temp.yaml =====
-      - name: Full test (ping + traffic) - create temp.yaml
+      # ===== ШАГ 2: ПИНГ ТЕСТ (ПАРАЛЛЕЛЬНО) → ping.yaml =====
+      - name: Ping test - create ping.yaml
         run: |
           set -e
-          echo "Starting FULL TEST (ping + traffic) at $(date)"
+          echo "Starting PING TEST at $(date)"
           
           # Устанавливаем netcat
           sudo apt-get update
           sudo apt-get install -y netcat-openbsd
-          
-          # Функция декодирования
-          urldecode() {
-            local data="$1"
-            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
-            echo "$decoded"
-          }
           
           # Функция проверки валидности сервера
           is_valid_server() {
@@ -105,16 +94,96 @@ jobs:
             return 1
           }
           
-          echo "proxies:" > temp.yaml
-          > /tmp/full_test_passed.txt
+          echo "proxies:" > ping.yaml
+          > /tmp/ping_queue.txt
+          > /tmp/ping_passed.txt
+          
+          total=0
+          valid_count=0
+          
+          # Собираем все прокси для пинга
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ "$line" == "proxies:" ]] && continue
+            [[ -z "$line" ]] && continue
+            
+            url="${line#  - }"
+            
+            # Парсим сервер и порт
+            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
+            server=$(echo "$server_port" | cut -d: -f1)
+            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
+            
+            if [ -z "$server" ] || [ -z "$port" ]; then
+              continue
+            fi
+            
+            if ! is_valid_server "$server"; then
+              continue
+            fi
+            
+            total=$((total + 1))
+            echo "$server:$port|$line" >> /tmp/ping_queue.txt
+            
+            # Показываем прогресс каждые 100 прокси
+            if [ $((total % 100)) -eq 0 ]; then
+              echo "Collected $total proxies for ping test..."
+            fi
+            
+          done < all_proxies.yaml
+          
+          echo "Total proxies to ping: $total"
+          echo "Starting parallel ping (50 at a time)..."
+          
+          # Параллельный пинг (50 процессов одновременно)
+          cat /tmp/ping_queue.txt | xargs -P 50 -I {} bash -c '
+            entry="{}"
+            server=$(echo "$entry" | cut -d"|" -f1 | cut -d: -f1)
+            port=$(echo "$entry" | cut -d"|" -f1 | cut -d: -f2)
+            line=$(echo "$entry" | cut -d"|" -f2-)
+            
+            if timeout 2 nc -zv "$server" "$port" 2>&1 | grep -q "succeeded"; then
+              echo "$line" >> /tmp/ping_passed.txt
+              echo "✅ $server:$port - alive"
+            else
+              echo "❌ $server:$port - dead"
+            fi
+          '
+          
+          # Записываем прошедшие пинг в ping.yaml
+          cat /tmp/ping_passed.txt >> ping.yaml
+          
+          passed_count=$(grep -c '^-' ping.yaml || echo 0)
+          
+          echo ""
+          echo "=== PING TEST RESULTS ==="
+          echo "Total processed: $total"
+          echo "✅ Passed ping: $passed_count"
+          echo "❌ Failed ping: $((total - passed_count))"
+          echo "Ping test completed at $(date)"
+          
+          rm -f /tmp/ping_queue.txt /tmp/ping_passed.txt
+
+      # ===== ШАГ 3: ТРАФИК ТЕСТ → traff.yaml =====
+      - name: Traffic test - create traff.yaml
+        run: |
+          set -e
+          echo "Starting TRAFFIC TEST at $(date)"
+          
+          # Функция декодирования
+          urldecode() {
+            local data="$1"
+            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
+            echo "$decoded"
+          }
+          
+          echo "proxies:" > traff.yaml
+          > /tmp/traffic_passed.txt
           
           total=0
           passed=0
-          invalid=0
           
-          # Читаем все прокси из all_proxies.yaml
+          # Читаем прокси из ping.yaml (прошедшие пинг)
           while IFS= read -r line || [ -n "$line" ]; do
-            # Пропускаем только заголовок, все остальные строки - прокси
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
@@ -127,57 +196,49 @@ jobs:
             port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
             
             if [ -z "$server" ] || [ -z "$port" ]; then
-              invalid=$((invalid + 1))
               continue
             fi
             
-            # Проверяем валидность сервера
-            if ! is_valid_server "$server"; then
-              invalid=$((invalid + 1))
-              continue
-            fi
+            echo -n "[$total] Testing traffic $server:$port... "
             
-            echo -n "[$total] Testing $server:$port... "
-            
-            # ТЕСТ 1: ПРОВЕРКА ПОРТА (PING)
-            if timeout 2 nc -zv "$server" "$port" 2>&1 | grep -q "succeeded"; then
-              # ТЕСТ 2: ПРОВЕРКА ТРАФИКА
-              if curl --socks5-hostname "$server:$port" \
-                      -s -o /dev/null -w "%{http_code}" \
-                      --max-time 4 \
-                      "http://www.gstatic.com/generate_204" 2>/dev/null | grep -q "204"; then
-                echo "✅ PASSED"
-                echo "$line" >> /tmp/full_test_passed.txt
-                passed=$((passed + 1))
-              else
-                echo "❌ FAILED (traffic)"
-              fi
+            # Проверка трафика через прокси
+            if curl --socks5-hostname "$server:$port" \
+                    -s -o /dev/null -w "%{http_code}" \
+                    --max-time 5 \
+                    "http://www.gstatic.com/generate_204" 2>/dev/null | grep -q "204"; then
+              echo "✅ PASSED"
+              echo "$line" >> /tmp/traffic_passed.txt
+              passed=$((passed + 1))
             else
-              echo "❌ FAILED (ping)"
+              echo "❌ FAILED"
             fi
             
-          done < all_proxies.yaml
+            # Показываем прогресс каждые 10 прокси
+            if [ $((total % 10)) -eq 0 ]; then
+              echo "Progress: $total tested, $passed passed"
+            fi
+            
+          done < ping.yaml
           
-          # Записываем прошедшие ОБА теста в temp.yaml
-          cat /tmp/full_test_passed.txt >> temp.yaml
+          # Записываем прошедшие трафик в traff.yaml
+          cat /tmp/traffic_passed.txt >> traff.yaml
           
           echo ""
-          echo "=== FULL TEST RESULTS ==="
-          echo "Total processed: $total"
-          echo "✅ Passed both tests: $passed"
-          echo "❌ Failed: $((total - passed - invalid))"
-          echo "⚠️ Invalid format: $invalid"
-          echo "Proxies saved to temp.yaml: $(grep -c '^-' temp.yaml || echo 0)"
+          echo "=== TRAFFIC TEST RESULTS ==="
+          echo "Tested from ping.yaml: $total"
+          echo "✅ Passed traffic: $passed"
+          echo "❌ Failed traffic: $((total - passed))"
+          echo "Traffic test completed at $(date)"
           
-          rm -f /tmp/full_test_passed.txt
+          rm -f /tmp/traffic_passed.txt
 
-      # ===== ШАГ 3: ОТБОР ТОП-100 ПО СКОРОСТИ → clash.yaml =====
+      # ===== ШАГ 4: SPEED TEST + TOP 100 → clash.yaml =====
       - name: Speed test - select TOP 100 to clash.yaml
         run: |
           set -e
-          echo "Starting SPEED test at $(date)"
+          echo "Starting SPEED TEST at $(date)"
           
-          # Функции из оригинального кода
+          # Функции
           urldecode() {
             local data="$1"
             decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
@@ -199,7 +260,7 @@ jobs:
           total=0
           measured=0
           
-          # Читаем прокси из temp.yaml (уже прошедшие ping + traffic)
+          # Читаем прокси из traff.yaml (прошедшие трафик)
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
@@ -218,7 +279,7 @@ jobs:
             
             echo -n "[$total] Measuring speed $server:$port... "
             
-            # Измеряем скорость (прокси уже проверен в шаге 2)
+            # Измеряем скорость
             start_time=$(date +%s%N)
             
             if curl --socks5-hostname "$server:$port" \
@@ -292,14 +353,19 @@ jobs:
               echo "$duration|$proxy_entry" >> /tmp/speed_results.txt
               measured=$((measured + 1))
             else
-              echo "FAILED (unexpected - should have passed step 2)"
+              echo "FAILED"
             fi
             
-          done < temp.yaml
+            # Показываем прогресс каждые 10 прокси
+            if [ $((total % 10)) -eq 0 ]; then
+              echo "Speed test progress: $total tested, $measured measured"
+            fi
+            
+          done < traff.yaml
           
           echo ""
           echo "=== SPEED TEST RESULTS ==="
-          echo "Proxies in temp.yaml: $total"
+          echo "Proxies in traff.yaml: $total"
           echo "Speed measured: $measured"
           
           # ВЫБОР ТОП-100 ПО СКОРОСТИ
@@ -322,8 +388,10 @@ jobs:
           echo ""
           echo "=== FINAL STATISTICS ==="
           echo "all_proxies.yaml: $(grep -c '^-' all_proxies.yaml || echo 0) total"
-          echo "temp.yaml: $(grep -c '^-' temp.yaml || echo 0) after ping+traffic"
+          echo "ping.yaml: $(grep -c '^-' ping.yaml || echo 0) after ping test"
+          echo "traff.yaml: $(grep -c '^-' traff.yaml || echo 0) after traffic test"
           echo "clash.yaml: $(grep -c '^- name:' clash.yaml || echo 0) TOP 100"
+          echo "Speed test completed at $(date)"
           
           rm -f /tmp/speed_results.txt
 
@@ -331,6 +399,13 @@ jobs:
         run: |
           echo "=== FIRST 3 PROXIES IN CLASH.YAML ==="
           head -n 30 clash.yaml | grep -A 10 "^- name:" | head -n 30
+          
+          echo ""
+          echo "=== STATISTICS SUMMARY ==="
+          echo "all_proxies.yaml: $(grep -c '^-' all_proxies.yaml || echo 0)"
+          echo "ping.yaml: $(grep -c '^-' ping.yaml || echo 0)"
+          echo "traff.yaml: $(grep -c '^-' traff.yaml || echo 0)"
+          echo "clash.yaml: $(grep -c '^- name:' clash.yaml || echo 0)"
 
       - name: Commit and Push
         run: |
@@ -341,7 +416,7 @@ jobs:
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add all_proxies.yaml temp.yaml clash.yaml
-          git commit -m "Update proxies $(date) - $(grep -c '^- name:' clash.yaml || echo 0) working"
+          git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
+          git commit -m "Update proxies $(date) - P:$(grep -c '^-' ping.yaml || echo 0) T:$(grep -c '^-' traff.yaml || echo 0) C:$(grep -c '^- name:' clash.yaml || echo 0)"
           git push
           echo "Changes pushed successfully"
