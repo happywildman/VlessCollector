@@ -2,7 +2,7 @@ name: Collect Proxies
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  # Каждые 2 часа
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -95,11 +95,12 @@ jobs:
           }
           
           echo "proxies:" > ping.yaml
-          > /tmp/ping_queue.txt
+          > /tmp/ping_servers.txt
+          > /tmp/ping_ports.txt
+          > /tmp/ping_lines.txt
           > /tmp/ping_passed.txt
           
           total=0
-          valid_count=0
           
           # Собираем все прокси для пинга
           while IFS= read -r line || [ -n "$line" ]; do
@@ -122,24 +123,23 @@ jobs:
             fi
             
             total=$((total + 1))
-            echo "$server:$port|$line" >> /tmp/ping_queue.txt
             
-            # Показываем прогресс каждые 100 прокси
-            if [ $((total % 100)) -eq 0 ]; then
-              echo "Collected $total proxies for ping test..."
-            fi
+            # Сохраняем в отдельные файлы
+            echo "$server" >> /tmp/ping_servers.txt
+            echo "$port" >> /tmp/ping_ports.txt
+            echo "$line" >> /tmp/ping_lines.txt
             
           done < all_proxies.yaml
           
           echo "Total proxies to ping: $total"
           echo "Starting parallel ping (50 at a time)..."
           
-          # Параллельный пинг (50 процессов одновременно)
-          cat /tmp/ping_queue.txt | xargs -P 50 -I {} bash -c '
-            entry="{}"
-            server=$(echo "$entry" | cut -d"|" -f1 | cut -d: -f1)
-            port=$(echo "$entry" | cut -d"|" -f1 | cut -d: -f2)
-            line=$(echo "$entry" | cut -d"|" -f2-)
+          # Создаем функцию для пинга
+          ping_proxy() {
+            local idx=$1
+            local server=$(sed -n "${idx}p" /tmp/ping_servers.txt)
+            local port=$(sed -n "${idx}p" /tmp/ping_ports.txt)
+            local line=$(sed -n "${idx}p" /tmp/ping_lines.txt)
             
             if timeout 2 nc -zv "$server" "$port" 2>&1 | grep -q "succeeded"; then
               echo "$line" >> /tmp/ping_passed.txt
@@ -147,10 +147,17 @@ jobs:
             else
               echo "❌ $server:$port - dead"
             fi
-          '
+          }
+          
+          export -f ping_proxy
+          
+          # Запускаем параллельно (без сложного экранирования)
+          seq 1 $total | xargs -P 50 -I {} bash -c 'ping_proxy "$@"' _ {}
           
           # Записываем прошедшие пинг в ping.yaml
-          cat /tmp/ping_passed.txt >> ping.yaml
+          if [ -f /tmp/ping_passed.txt ]; then
+            sort -u /tmp/ping_passed.txt >> ping.yaml
+          fi
           
           passed_count=$(grep -c '^-' ping.yaml || echo 0)
           
@@ -159,9 +166,8 @@ jobs:
           echo "Total processed: $total"
           echo "✅ Passed ping: $passed_count"
           echo "❌ Failed ping: $((total - passed_count))"
-          echo "Ping test completed at $(date)"
           
-          rm -f /tmp/ping_queue.txt /tmp/ping_passed.txt
+          rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
       # ===== ШАГ 3: ТРАФИК ТЕСТ → traff.yaml =====
       - name: Traffic test - create traff.yaml
@@ -221,14 +227,15 @@ jobs:
           done < ping.yaml
           
           # Записываем прошедшие трафик в traff.yaml
-          cat /tmp/traffic_passed.txt >> traff.yaml
+          if [ -f /tmp/traffic_passed.txt ]; then
+            sort -u /tmp/traffic_passed.txt >> traff.yaml
+          fi
           
           echo ""
           echo "=== TRAFFIC TEST RESULTS ==="
           echo "Tested from ping.yaml: $total"
           echo "✅ Passed traffic: $passed"
           echo "❌ Failed traffic: $((total - passed))"
-          echo "Traffic test completed at $(date)"
           
           rm -f /tmp/traffic_passed.txt
 
@@ -391,7 +398,6 @@ jobs:
           echo "ping.yaml: $(grep -c '^-' ping.yaml || echo 0) after ping test"
           echo "traff.yaml: $(grep -c '^-' traff.yaml || echo 0) after traffic test"
           echo "clash.yaml: $(grep -c '^- name:' clash.yaml || echo 0) TOP 100"
-          echo "Speed test completed at $(date)"
           
           rm -f /tmp/speed_results.txt
 
@@ -399,13 +405,6 @@ jobs:
         run: |
           echo "=== FIRST 3 PROXIES IN CLASH.YAML ==="
           head -n 30 clash.yaml | grep -A 10 "^- name:" | head -n 30
-          
-          echo ""
-          echo "=== STATISTICS SUMMARY ==="
-          echo "all_proxies.yaml: $(grep -c '^-' all_proxies.yaml || echo 0)"
-          echo "ping.yaml: $(grep -c '^-' ping.yaml || echo 0)"
-          echo "traff.yaml: $(grep -c '^-' traff.yaml || echo 0)"
-          echo "clash.yaml: $(grep -c '^- name:' clash.yaml || echo 0)"
 
       - name: Commit and Push
         run: |
