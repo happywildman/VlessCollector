@@ -61,7 +61,6 @@ jobs:
           echo "Processing collected data..."
           sed -i 's/vless:/\nvless:/g' temp.txt
 
-          # ИСПРАВЛЕНИЕ: || true для обработки SIGPIPE от sort|head
           grep -oE 'vless://[^[:space:]]+' temp.txt \
             | grep -v "%25" \
             | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
@@ -176,16 +175,13 @@ jobs:
       - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
-          # ДИАГНОСТИКА: покажет номер строки, где происходит сбой
           trap 'echo "❌ ERROR at line $LINENO: $BASH_COMMAND (exit code: $?)"' ERR
           echo "Starting TRAFFIC TEST with Xray at $(date)"
           
-          # Скачиваем Xray
-          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip  
+          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
           unzip -q Xray-linux-64.zip -d xray/
           chmod +x xray/xray
           
-          # Функция декодирования
           urldecode() {
             local data="$1"
             decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
@@ -193,15 +189,56 @@ jobs:
           }
           
           echo "proxies:" > traff.yaml
-          
           mkdir -p /tmp/xray_results
           rm -f /tmp/xray_results/*
-          
           > /tmp/xray_queue.txt
           
+          # Создаём Python-скрипт для генерации конфига (отдельный файл)
+          cat > /tmp/gen_xray_config.py << 'PYEOF'
+import json
+import sys
+
+server = sys.argv[1]
+port = sys.argv[2]
+uuid = sys.argv[3]
+network = sys.argv[4]
+security = sys.argv[5]
+sni = sys.argv[6]
+host = sys.argv[7]
+path = sys.argv[8]
+flow = sys.argv[9]
+
+user = {"id": uuid}
+if flow:
+    user["flow"] = flow
+
+config = {
+    "log": {"loglevel": "none"},
+    "inbounds": [{"port": 1080, "protocol": "socks", "settings": {"auth": "noauth"}}],
+    "outbounds": [{
+        "protocol": "vless",
+        "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]},
+        "streamSettings": {"network": network, "security": security}
+    }]
+}
+
+if security != "none":
+    config["outbounds"][0]["streamSettings"]["tlsSettings"] = {
+        "serverName": sni if sni else server,
+        "allowInsecure": False
+    }
+
+if network == "ws":
+    ws = {"path": path} if path else {}
+    if host:
+        ws["headers"] = {"Host": host}
+    config["outbounds"][0]["streamSettings"]["wsSettings"] = ws
+
+print(json.dumps(config))
+PYEOF
+
           total=0
           
-          # Подготавливаем прокси для тестирования
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
@@ -209,7 +246,6 @@ jobs:
             url="${line#  - }"
             total=$((total + 1))
             
-            # Парсим параметры
             uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
             uuid=$(urldecode "$uuid_encoded" | sed 's/[^a-zA-Z0-9-]//g')
             
@@ -240,48 +276,10 @@ jobs:
               done
             fi
             
-            # Создаём конфиг через Python (исправление YAML-ошибки с heredoc)
             config_file="/tmp/xray_config_${total}.json"
             
-            python3 -c "
-import json, sys
-server = '''$server'''
-port = '''$port'''
-uuid = '''$uuid'''
-network = '''$network'''
-security = '''$security'''
-sni = '''$sni'''
-host = '''$host'''
-path = '''$path'''
-flow = '''$flow'''
-
-user = {'id': uuid}
-if flow:
-    user['flow'] = flow
-
-config = {
-    'log': {'loglevel': 'none'},
-    'inbounds': [{'port': 1080, 'protocol': 'socks', 'settings': {'auth': 'noauth'}}],
-    'outbounds': [{
-        'protocol': 'vless',
-        'settings': {'vnext': [{'address': server, 'port': int(port), 'users': [user]}]},
-        'streamSettings': {'network': network, 'security': security}
-    }]
-}
-
-if security != 'none':
-    config['outbounds'][0]['streamSettings']['tlsSettings'] = {'serverName': sni if sni else server, 'allowInsecure': False}
-
-if network == 'ws':
-    ws = {'path': path} if path else {}
-    if host:
-        ws['headers'] = {'Host': host}
-    config['outbounds'][0]['streamSettings']['wsSettings'] = ws
-
-print(json.dumps(config))
-" > "$config_file"
+            python3 /tmp/gen_xray_config.py "$server" "$port" "$uuid" "$network" "$security" "$sni" "$host" "$path" "$flow" > "$config_file"
             
-            # Сохраняем для параллельного запуска
             echo "$total|$config_file|$line" >> /tmp/xray_queue.txt
             
           done < ping.yaml
@@ -289,21 +287,17 @@ print(json.dumps(config))
           echo "Total proxies for traffic test: $total"
           echo "Starting parallel Xray test (5 at a time)..."
           
-          # Функция для проверки через Xray
           test_xray_proxy() {
             local item="$1"
             local idx=$(echo "$item" | cut -d'|' -f1)
             local config_file=$(echo "$item" | cut -d'|' -f2)
             local line=$(echo "$item" | cut -d'|' -f3)
             
-            # Запускаем Xray
             ./xray/xray -config "$config_file" > /dev/null 2>&1 &
             XRAY_PID=$!
             
-            # Даём время на запуск
             sleep 1
             
-            # Проверяем через локальный SOCKS5
             if curl --socks5-hostname 127.0.0.1:1080 \
                     -s -o /dev/null -w "%{http_code}" \
                     --max-time 5 \
@@ -314,20 +308,15 @@ print(json.dumps(config))
               echo "❌ Proxy $idx - failed"
             fi
             
-            # Убиваем Xray
             kill $XRAY_PID 2>/dev/null || true
             wait $XRAY_PID 2>/dev/null || true
-            
-            # Удаляем конфиг
             rm -f "$config_file"
           }
           
           export -f test_xray_proxy
           
-          # Запускаем параллельно (5 потоков)
           cat /tmp/xray_queue.txt | xargs -P 5 -I {} bash -c 'test_xray_proxy "{}"'
           
-          # Собираем результаты
           if [ -d /tmp/xray_results ]; then
             cat /tmp/xray_results/*.txt >> traff.yaml 2>/dev/null || true
           fi
@@ -341,8 +330,6 @@ print(json.dumps(config))
           echo "Total tested: $total"
           echo "✅ Passed traffic: $passed"
           echo "❌ Failed traffic: $((total - passed))"
-          
-          # НЕ удаляем Xray здесь — он нужен в Шаге 4!
 
       # ===== ШАГ 4: SPEED TEST + TOP 100 =====
       - name: Speed test - select TOP 100 to clash.yaml
@@ -541,8 +528,7 @@ print(json.dumps(config))
           git push
           echo "Changes pushed successfully"
 
-      # ===== ОЧИСТКА В КОНЦЕ =====
       - name: Cleanup
         run: |
-          rm -rf /tmp/xray_results /tmp/xray_* xray/ Xray-linux-64.zip
+          rm -rf /tmp/xray_results /tmp/xray_* xray/ Xray-linux-64.zip /tmp/gen_xray_config.py
           echo "Cleanup complete"
