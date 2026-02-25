@@ -240,35 +240,47 @@ jobs:
               done
             fi
             
-            # Создаём уникальный конфиг для каждого прокси
+            # Создаём конфиг через Python (исправление YAML-ошибки с heredoc)
             config_file="/tmp/xray_config_${total}.json"
             
-            cat > "$config_file" <<EOF
-{
-  "log": {"loglevel": "none"},
-  "inbounds": [{
-    "port": 1080,
-    "protocol": "socks",
-    "settings": {"auth": "noauth"}
-  }],
-  "outbounds": [{
-    "protocol": "vless",
-    "settings": {
-      "vnext": [{
-        "address": "$server",
-        "port": $port,
-        "users": [{"id": "$uuid"$(if [ -n "$flow" ]; then echo ", \"flow\": \"$flow\""; fi)}]
-      }]
-    },
-    "streamSettings": {
-      "network": "$network",
-      "security": "$security",
-      "tlsSettings": $(if [ "$security" != "none" ]; then echo "{\"serverName\": \"${sni:-$server}\", \"allowInsecure\": false}"; else echo "null"; fi),
-      "wsSettings": $(if [ "$network" = "ws" ]; then echo "{\"path\": \"$path\", \"headers\": {\"Host\": \"${host:-$server}\"}}"; else echo "null"; fi)
-    }
-  }]
+            python3 -c "
+import json, sys
+server = '''$server'''
+port = '''$port'''
+uuid = '''$uuid'''
+network = '''$network'''
+security = '''$security'''
+sni = '''$sni'''
+host = '''$host'''
+path = '''$path'''
+flow = '''$flow'''
+
+user = {'id': uuid}
+if flow:
+    user['flow'] = flow
+
+config = {
+    'log': {'loglevel': 'none'},
+    'inbounds': [{'port': 1080, 'protocol': 'socks', 'settings': {'auth': 'noauth'}}],
+    'outbounds': [{
+        'protocol': 'vless',
+        'settings': {'vnext': [{'address': server, 'port': int(port), 'users': [user]}]},
+        'streamSettings': {'network': network, 'security': security}
+    }]
 }
-EOF
+
+if security != 'none':
+    config['outbounds'][0]['streamSettings']['tlsSettings'] = {'serverName': sni if sni else server, 'allowInsecure': False}
+
+if network == 'ws':
+    ws = {'path': path} if path else {}
+    if host:
+        ws['headers'] = {'Host': host}
+    config['outbounds'][0]['streamSettings']['wsSettings'] = ws
+
+print(json.dumps(config))
+" > "$config_file"
+            
             # Сохраняем для параллельного запуска
             echo "$total|$config_file|$line" >> /tmp/xray_queue.txt
             
@@ -331,7 +343,6 @@ EOF
           echo "❌ Failed traffic: $((total - passed))"
           
           # НЕ удаляем Xray здесь — он нужен в Шаге 4!
-          # rm -rf /tmp/xray_* /tmp/xray_results xray/ Xray-linux-64.zip
 
       # ===== ШАГ 4: SPEED TEST + TOP 100 =====
       - name: Speed test - select TOP 100 to clash.yaml
