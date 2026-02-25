@@ -92,34 +92,37 @@ jobs:
           
           total=0
           
+          # Создаём Python-скрипт для парсинга
+          cat > /tmp/parse_url.py << 'EOF'
+          import urllib.parse, sys, re
+          url = sys.argv[1]
+          try:
+              p = urllib.parse.urlparse(url.replace('vless://', 'http://'))
+              auth, server_port = p.netloc.split('@', 1)
+              server, port = server_port.rsplit(':', 1)
+              if re.match(r'^(\d{1,3}\.){3}\d{1,3}$', server) or re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$', server):
+                  print(f'{server}:{port}')
+              else:
+                  sys.exit(1)
+          except:
+              sys.exit(1)
+          EOF
+          
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" || -z "$line" ]] && continue
             url="${line#  - }"
             
-            parsed=$(python3 -c "
-import urllib.parse, sys, re
-url = '''$url'''
-try:
-    p = urllib.parse.urlparse(url.replace('vless://', 'http://'))
-    auth, server_port = p.netloc.split('@', 1)
-    server, port = server_port.rsplit(':', 1)
-    if re.match(r'^(\d{1,3}\.){3}\d{1,3}$', server) or re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$', server):
-        print(f'{server}:{port}')
-    else:
-        sys.exit(1)
-except:
-    sys.exit(1)
-" 2>/dev/null) || continue
+            parsed=$(python3 /tmp/parse_url.py "$url" 2>/dev/null) || continue
             
             server="${parsed%:*}"
             port="${parsed#*:}"
             total=$((total + 1))
             
-            cat > "/tmp/ping_test/${total}.txt" <<EOF
-$server
-$port
-$line
-EOF
+            cat > "/tmp/ping_test/${total}.txt" << EOF
+          $server
+          $port
+          $line
+          EOF
           done < all_proxies.yaml
           
           echo "📋 Total proxies to ping: $total"
@@ -167,6 +170,47 @@ EOF
           unzip -q "$XRAY_ZIP" -d xray/
           chmod +x xray/xray
           
+          # Создаём Python-скрипт для генерации конфига Xray
+          cat > /tmp/xray_config_gen.py << 'EOF'
+          import urllib.parse, json, sys
+          url = sys.argv[1]
+          local_port = int(sys.argv[2])
+          try:
+              parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
+              auth, server_port = parsed.netloc.split('@', 1)
+              server, port = server_port.rsplit(':', 1)
+              uuid = urllib.parse.unquote(auth)
+              params = dict(urllib.parse.parse_qsl(parsed.query))
+              network = params.get('type', 'tcp')
+              security = params.get('security', 'none')
+              sni = params.get('sni', server if security in ['tls', 'reality'] else '')
+              flow = params.get('flow', '')
+              host = params.get('host', '')
+              path = params.get('path', '')
+              config = {
+                  "log": {"loglevel": "none"},
+                  "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}],
+                  "outbounds": [{
+                      "protocol": "vless",
+                      "settings": {"vnext": [{"address": server, "port": int(port), "users": [{"id": uuid} | ({"flow": flow} if flow else {})]}]},
+                      "streamSettings": {"network": network, "security": security}
+                  }]
+              }
+              if security in ["tls", "reality"]:
+                  config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni or server, "allowInsecure": False, "fingerprint": "chrome"}
+              if network == "ws":
+                  ws_settings = {"path": path} if path else {}
+                  if host:
+                      ws_settings["headers"] = {"Host": host}
+                  config["outbounds"][0]["streamSettings"]["wsSettings"] = ws_settings
+              elif network == "grpc":
+                  config["outbounds"][0]["streamSettings"]["grpcSettings"] = {"serviceName": params.get('serviceName', '')}
+              print(json.dumps(config))
+          except Exception as e:
+              print(json.dumps({"error": str(e)}), file=sys.stderr)
+              sys.exit(1)
+          EOF
+          
           echo "proxies:" > traff.yaml
           mkdir -p /tmp/xray_test
           rm -rf /tmp/xray_test/*
@@ -181,73 +225,7 @@ EOF
             
             local_port=$((20000 + total))
             
-            config_json=$(python3 << PYEOF
-import urllib.parse, json, sys
-
-url = '''$url'''
-local_port = $local_port
-
-try:
-    parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
-    auth, server_port = parsed.netloc.split('@', 1)
-    server, port = server_port.rsplit(':', 1)
-    uuid = urllib.parse.unquote(auth)
-    
-    params = dict(urllib.parse.parse_qsl(parsed.query))
-    
-    network = params.get('type', 'tcp')
-    security = params.get('security', 'none')
-    sni = params.get('sni', server if security in ['tls', 'reality'] else '')
-    flow = params.get('flow', '')
-    host = params.get('host', '')
-    path = params.get('path', '')
-    
-    config = {
-        "log": {"loglevel": "none"},
-        "inbounds": [{
-            "port": local_port,
-            "protocol": "socks",
-            "settings": {"auth": "noauth", "udp": True}
-        }],
-        "outbounds": [{
-            "protocol": "vless",
-            "settings": {
-                "vnext": [{
-                    "address": server,
-                    "port": int(port),
-                    "users": [{"id": uuid} | ({"flow": flow} if flow else {})]
-                }]
-            },
-            "streamSettings": {
-                "network": network,
-                "security": security
-            }
-        }]
-    }
-    
-    if security in ["tls", "reality"]:
-        config["outbounds"][0]["streamSettings"]["tlsSettings"] = {
-            "serverName": sni or server,
-            "allowInsecure": False,
-            "fingerprint": "chrome"
-        }
-    
-    if network == "ws":
-        ws_settings = {"path": path} if path else {}
-        if host:
-            ws_settings["headers"] = {"Host": host}
-        config["outbounds"][0]["streamSettings"]["wsSettings"] = ws_settings
-    elif network == "grpc":
-        config["outbounds"][0]["streamSettings"]["grpcSettings"] = {
-            "serviceName": params.get('serviceName', '')
-        }
-    
-    print(json.dumps(config))
-except Exception as e:
-    print(json.dumps({"error": str(e)}), file=sys.stderr)
-    sys.exit(1)
-PYEOF
-            )
+            config_json=$(python3 /tmp/xray_config_gen.py "$url" "$local_port" 2>/dev/null)
             
             if echo "$config_json" | jq -e '.error' >/dev/null 2>&1; then
               echo "⚠️ Skip invalid proxy #$total" >&2
@@ -312,19 +290,69 @@ PYEOF
           
           rm -rf /tmp/xray_test xray/ "$XRAY_ZIP"
 
-      # ===== ШАГ 4: SPEED TEST + TOP 100 (ВАША ОРИГИНАЛЬНАЯ ЛОГИКА + ИСПРАВЛЕНИЯ) =====
+      # ===== ШАГ 4: SPEED TEST + TOP 100 =====
       - name: Speed test - select TOP 100 to clash.yaml
         run: |
           set -euo pipefail
           echo "🚀 Starting SPEED TEST at $(date)"
           
-          # Надёжное декодирование через Python
+          # Создаём Python-скрипт для парсинга
+          cat > /tmp/speed_parse.py << 'EOF'
+          import urllib.parse, sys
+          url = sys.argv[1]
+          try:
+              parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
+              auth, server_port = parsed.netloc.split('@', 1)
+              server, port = server_port.rsplit(':', 1)
+              params = dict(urllib.parse.parse_qsl(parsed.query))
+              uuid = urllib.parse.unquote(auth)
+              print(f'{server}|{port}|{params.get("type", "tcp")}|{params.get("security", "none")}|{params.get("sni", "")}|{params.get("host", "")}|{params.get("path", "")}|{params.get("flow", "")}|{uuid}')
+          except Exception as e:
+              sys.exit(1)
+          EOF
+          
+          # Создаём Python-скрипт для генерации конфига Xray
+          cat > /tmp/speed_xray_gen.py << 'EOF'
+          import urllib.parse, json, sys
+          url = sys.argv[1]
+          local_port = int(sys.argv[2])
+          try:
+              parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
+              auth, server_port = parsed.netloc.split('@', 1)
+              server, port = server_port.rsplit(':', 1)
+              uuid = urllib.parse.unquote(auth)
+              params = dict(urllib.parse.parse_qsl(parsed.query))
+              network = params.get('type', 'tcp')
+              security = params.get('security', 'none')
+              sni = params.get('sni', server if security in ['tls', 'reality'] else '')
+              flow = params.get('flow', '')
+              host = params.get('host', '')
+              path = params.get('path', '')
+              config = {
+                  "log": {"loglevel": "none"},
+                  "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}],
+                  "outbounds": [{
+                      "protocol": "vless",
+                      "settings": {"vnext": [{"address": server, "port": int(port), "users": [{"id": uuid} | ({"flow": flow} if flow else {})]}]},
+                      "streamSettings": {"network": network, "security": security}
+                  }]
+              }
+              if security in ["tls", "reality"]:
+                  config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni or server, "allowInsecure": False, "fingerprint": "chrome"}
+              if network == "ws":
+                  ws_settings = {"path": path} if path else {}
+                  if host: ws_settings["headers"] = {"Host": host}
+                  config["outbounds"][0]["streamSettings"]["wsSettings"] = ws_settings
+              print(json.dumps(config))
+          except:
+              sys.exit(1)
+          EOF
+          
           urldecode() {
             python3 -c "import urllib.parse,sys; print(urllib.parse.unquote(sys.argv[1]), end='')" "$1" 2>/dev/null || echo "$1"
           }
           
           clean_uuid() {
-            # Сохраняем дефисы в UUID (исправление оригинальной ошибки)
             echo "$1" | sed 's/[^a-zA-Z0-9@.\-]//g'
           }
           
@@ -343,19 +371,7 @@ PYEOF
             url="${line#  - }"
             total=$((total + 1))
             
-            # Парсинг через Python для надёжности
-            parsed=$(python3 -c "
-import urllib.parse, sys
-url = '''$url'''
-try:
-    p = urllib.parse.urlparse(url.replace('vless://', 'http://'))
-    auth, server_port = p.netloc.split('@', 1)
-    server, port = server_port.rsplit(':', 1)
-    params = dict(urllib.parse.parse_qsl(p.query))
-    print(f'{server}|{port}|{params.get(\"type\", \"tcp\")}|{params.get(\"security\", \"none\")}|{params.get(\"sni\", \"\")}|{params.get(\"host\", \"\")}|{params.get(\"path\", \"\")}|{params.get(\"flow\", \"\")}|{auth}')
-except Exception as e:
-    sys.exit(1)
-" 2>/dev/null) || continue
+            parsed=$(python3 /tmp/speed_parse.py "$url" 2>/dev/null) || continue
             
             server=$(echo "$parsed" | cut -d'|' -f1)
             port=$(echo "$parsed" | cut -d'|' -f2)
@@ -373,44 +389,9 @@ except Exception as e:
             
             echo -n "[$total] Measuring speed $server:$port... "
             
-            # Для speed test используем тот же подход с Xray (корректно для VLESS)
             local_port=$((30000 + total))
             
-            config_json=$(python3 << PYEOF
-import urllib.parse, json, sys
-url = '''$url'''
-local_port = $local_port
-try:
-    parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
-    auth, server_port = parsed.netloc.split('@', 1)
-    server, port = server_port.rsplit(':', 1)
-    uuid = urllib.parse.unquote(auth)
-    params = dict(urllib.parse.parse_qsl(parsed.query))
-    network = params.get('type', 'tcp')
-    security = params.get('security', 'none')
-    sni = params.get('sni', server if security in ['tls', 'reality'] else '')
-    flow = params.get('flow', '')
-    host = params.get('host', '')
-    path = params.get('path', '')
-    config = {
-        "log": {"loglevel": "none"},
-        "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}],
-        "outbounds": [{
-            "protocol": "vless",
-            "settings": {"vnext": [{"address": server, "port": int(port), "users": [{"id": uuid} | ({"flow": flow} if flow else {})]}]},
-            "streamSettings": {"network": network, "security": security}
-        }]
-    }
-    if security in ["tls", "reality"]:
-        config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni or server, "allowInsecure": False, "fingerprint": "chrome"}
-    if network == "ws":
-        ws_settings = {"path": path} if path else {}
-        if host: ws_settings["headers"] = {"Host": host}
-        config["outbounds"][0]["streamSettings"]["wsSettings"] = ws_settings
-    print(json.dumps(config))
-except: sys.exit(1)
-PYEOF
-            ) || continue
+            config_json=$(python3 /tmp/speed_xray_gen.py "$url" "$local_port" 2>/dev/null) || continue
             
             echo "$config_json" > "/tmp/speed_config_${total}.json"
             
