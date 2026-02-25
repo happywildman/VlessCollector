@@ -165,7 +165,7 @@ jobs:
           
           rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
-      # ===== ШАГ 3: ТРАФИК ТЕСТ ЧЕРЕЗ XRAY =====
+      # ===== ШАГ 3: ТРАФИК ТЕСТ ЧЕРЕЗ XRAY (ПОЛНАЯ ВЕРСИЯ) =====
       - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
@@ -188,8 +188,7 @@ jobs:
           mkdir -p /tmp/xray_results
           rm -f /tmp/xray_results/*
           
-          > /tmp/xray_lines.txt
-          > /tmp/xray_configs.txt
+          > /tmp/xray_queue.txt
           
           total=0
           
@@ -232,36 +231,38 @@ jobs:
               done
             fi
             
-            # Создаём Xray конфиг - с экранированием для YAML
+            # Создаём уникальный конфиг для каждого прокси
             config_file="/tmp/xray_config_${total}.json"
-            cat > "$config_file" <<- 'XRAY_EOF'
-            {
-              "log": {"loglevel": "none"},
-              "inbounds": [{
-                "port": 1080,
-                "protocol": "socks",
-                "settings": {"auth": "noauth"}
-              }],
-              "outbounds": [{
-                "protocol": "vless",
-                "settings": {
-                  "vnext": [{
-                    "address": "'"$server"'",
-                    "port": '"$port"',
-                    "users": [{"id": "'"$uuid"'", "flow": "'"$flow"'"}]
-                  }]
-                },
-                "streamSettings": {
-                  "network": "'"$network"'",
-                  "security": "'"$security"'",
-                  "tlsSettings": '"$(if [ "$security" != "none" ]; then echo "{\"serverName\": \"${sni:-$server}\"}"; else echo "null"; fi)"',
-                  "wsSettings": '"$(if [ "$network" = "ws" ]; then echo "{\"path\": \"$path\", \"headers\": {\"Host\": \"${host:-$server}\"}}"; else echo "null"; fi)"'
-                }
-              }]
-            }
-XRAY_EOF
-            echo "$line" >> /tmp/xray_lines.txt
-            echo "$config_file" >> /tmp/xray_configs.txt
+            
+            # Формируем JSON с правильным экранированием
+            cat > "$config_file" <<EOF
+{
+  "log": {"loglevel": "none"},
+  "inbounds": [{
+    "port": 1080,
+    "protocol": "socks",
+    "settings": {"auth": "noauth"}
+  }],
+  "outbounds": [{
+    "protocol": "vless",
+    "settings": {
+      "vnext": [{
+        "address": "$server",
+        "port": $port,
+        "users": [{"id": "$uuid", "flow": "$flow"}]
+      }]
+    },
+    "streamSettings": {
+      "network": "$network",
+      "security": "$security",
+      "tlsSettings": $(if [ "$security" != "none" ]; then echo "{\"serverName\": \"${sni:-$server}\"}"; else echo "null"; fi),
+      "wsSettings": $(if [ "$network" = "ws" ]; then echo "{\"path\": \"$path\", \"headers\": {\"Host\": \"${host:-$server}\"}}"; else echo "null"; fi)
+    }
+  }]
+}
+EOF
+            # Сохраняем для параллельного запуска
+            echo "$total|$config_file|$line" >> /tmp/xray_queue.txt
             
           done < ping.yaml
           
@@ -270,9 +271,10 @@ XRAY_EOF
           
           # Функция для проверки через Xray
           test_xray_proxy() {
-            local idx=$1
-            local config_file=$(sed -n "${idx}p" /tmp/xray_configs.txt)
-            local line=$(sed -n "${idx}p" /tmp/xray_lines.txt)
+            local item="$1"
+            local idx=$(echo "$item" | cut -d'|' -f1)
+            local config_file=$(echo "$item" | cut -d'|' -f2)
+            local line=$(echo "$item" | cut -d'|' -f3)
             
             # Запускаем Xray
             ./xray/xray -config "$config_file" > /dev/null 2>&1 &
@@ -295,12 +297,15 @@ XRAY_EOF
             # Убиваем Xray
             kill $XRAY_PID 2>/dev/null || true
             wait $XRAY_PID 2>/dev/null || true
+            
+            # Удаляем конфиг
+            rm -f "$config_file"
           }
           
           export -f test_xray_proxy
           
-          # Запускаем параллельно
-          seq 1 $total | xargs -P 5 -I {} bash -c 'test_xray_proxy "$@"' _ {}
+          # Запускаем параллельно (5 потоков)
+          cat /tmp/xray_queue.txt | xargs -P 5 -I {} bash -c 'test_xray_proxy "{}"'
           
           # Собираем результаты
           if [ -d /tmp/xray_results ]; then
