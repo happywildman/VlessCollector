@@ -232,34 +232,34 @@ jobs:
               done
             fi
             
-            # Создаём Xray конфиг (используем EOF без кавычек)
+            # Создаём Xray конфиг - с экранированием для YAML
             config_file="/tmp/xray_config_${total}.json"
-            cat > "$config_file" << EOF
-{
-  "log": {"loglevel": "none"},
-  "inbounds": [{
-    "port": 1080,
-    "protocol": "socks",
-    "settings": {"auth": "noauth"}
-  }],
-  "outbounds": [{
-    "protocol": "vless",
-    "settings": {
-      "vnext": [{
-        "address": "$server",
-        "port": $port,
-        "users": [{"id": "$uuid", "flow": "$flow"}]
-      }]
-    },
-    "streamSettings": {
-      "network": "$network",
-      "security": "$security",
-      "tlsSettings": $(if [ "$security" != "none" ]; then echo "{\"serverName\": \"${sni:-$server}\"}"; else echo "null"; fi),
-      "wsSettings": $(if [ "$network" = "ws" ]; then echo "{\"path\": \"$path\", \"headers\": {\"Host\": \"${host:-$server}\"}}"; else echo "null"; fi)
-    }
-  }]
-}
-EOF
+            cat > "$config_file" <<- 'XRAY_EOF'
+            {
+              "log": {"loglevel": "none"},
+              "inbounds": [{
+                "port": 1080,
+                "protocol": "socks",
+                "settings": {"auth": "noauth"}
+              }],
+              "outbounds": [{
+                "protocol": "vless",
+                "settings": {
+                  "vnext": [{
+                    "address": "'"$server"'",
+                    "port": '"$port"',
+                    "users": [{"id": "'"$uuid"'", "flow": "'"$flow"'"}]
+                  }]
+                },
+                "streamSettings": {
+                  "network": "'"$network"'",
+                  "security": "'"$security"'",
+                  "tlsSettings": '"$(if [ "$security" != "none" ]; then echo "{\"serverName\": \"${sni:-$server}\"}"; else echo "null"; fi)"',
+                  "wsSettings": '"$(if [ "$network" = "ws" ]; then echo "{\"path\": \"$path\", \"headers\": {\"Host\": \"${host:-$server}\"}}"; else echo "null"; fi)"'
+                }
+              }]
+            }
+XRAY_EOF
             echo "$line" >> /tmp/xray_lines.txt
             echo "$config_file" >> /tmp/xray_configs.txt
             
@@ -298,7 +298,6 @@ EOF
           }
           
           export -f test_xray_proxy
-          export PATH=$PATH:$(pwd)/xray
           
           # Запускаем параллельно
           seq 1 $total | xargs -P 5 -I {} bash -c 'test_xray_proxy "$@"' _ {}
