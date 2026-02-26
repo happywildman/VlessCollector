@@ -1,27 +1,18 @@
 proxies:
-  - name: "92.118.10.56-443-6202b230"
+  - name: "🌍africa.visa.com-8880-5b002005"
     type: vless
-    server: "92.118.10.56"
-    port: 443
-    uuid: "6202b230-417c-4d8e-b624-0f71afa9c75d"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "vb-p.0c0.ccwu.cc-80-60c4d55d"
-    type: vless
-    server: "vb-p.0c0.ccwu.cc"
-    port: 80
-    uuid: "60c4d55d-bee3-4719-9568-aabf45153f9f"
+    server: "africa.visa.com"
+    port: 8880
+    uuid: "5b002005-7fb1-413e-8cbd-08e50c87c2ea"
     network: ws
     tls: false
     udp: true
     ws-opts:
-      path: "/gPvZ4oCcNDyuc3szX7xhuvpEm"
+      path: "/?ed=2560Join---V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz---@V2rayBaaz"
       headers:
-        Host: "vb-p.0c0.ccwu.cc"
+        Host: "wetfleagidc-8tsbi8xd-v3.wet-flea-gidc.workers.dev"
 
-  - name: "45.82.251.195-8880-8dc7722c"
+  - name: "🇨🇾45.82.251.195-8880-8dc7722c"
     type: vless
     server: "45.82.251.195"
     port: 8880
@@ -30,7 +21,20 @@ proxies:
     tls: false
     udp: true
 
-  - name: "185.236.232.117-8880-8dc7722c"
+  - name: "🌍104.21.224.5-2052-f8ae018b"
+    type: vless
+    server: "104.21.224.5"
+    port: 2052
+    uuid: "f8ae018b-b84d-4c9b-b03b-4642c3a25977"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "ExEMplAry-MILkytsxQiQYso.sPortlaNd.CoMPANy"
+
+  - name: "🇺🇸185.236.232.117-8880-8dc7722c"
     type: vless
     server: "185.236.232.117"
     port: 8880
@@ -39,34 +43,82 @@ proxies:
     tls: false
     udp: true
 
-  - name: "45.82.251.249-8880-8dc7722c"
+  - name: "🌍chatgpt.com-2052-12d75b7d"
     type: vless
-    server: "45.82.251.249"
+    server: "chatgpt.com"
+    port: 2052
+    uuid: "12d75b7d-8fdf-4785-8d62-d836854e7e63"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "parking-nfchbwa1-v2.parking-1ab.workers.dev"
+
+  - name: "🌍ghju.apocalypse.cc.cd-80-13ad36e6"
+    type: vless
+    server: "ghju.apocalypse.cc.cd"
+    port: 80
+    uuid: "13ad36e6-c091-43f2-8505-47d868dd544c"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/XR8So0uqFVa3vY9ZbxgW4"
+      headers:
+        Host: "ghju.apocalypse.cc.cd"
+
+  - name: "🇺🇸40.160.14.104-8880-6251f84e"
+    type: vless
+    server: "40.160.14.104"
+    port: 8880
+    uuid: "6251f84e-9c02-4140-921c-6b47d394fb96"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🇨🇦144.217.133.97-30238-27b6068a"
+    type: vless
+    server: "144.217.133.97"
+    port: 30238
+    uuid: "27b6068a-e1e6-4675-ab14-87143c690390"
+    network: tcp
+    tls: false
+    udp: true
+
+  - name: "🌍namemc.com-2095-86c50e3a"
+    type: vless
+    server: "namemc.com"
+    port: 2095
+    uuid: "86c50e3a-5b87-49dd-bd20-03c7f2735e40"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/"
+      headers:
+        Host: "fangbinxingnmsl.pusytroller.cf"
+
+  - name: "🇨🇾45.82.251.33-8880-8dc7722c"
+    type: vless
+    server: "45.82.251.33"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
     tls: false
     udp: true
 
-  - name: "45.82.251.208-8880-8dc7722c"
+  - name: "🌍fast.panelha.sbs-80-95f75825"
     type: vless
-    server: "45.82.251.208"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
+    server: "fast.panelha.sbs"
+    port: 80
+    uuid: "95f75825-bbcc-4e53-a91d-9364db9d4b42"
+    network: xhttp
     tls: false
     udp: true
 
-  - name: "45.82.251.116-8880-8dc7722c"
-    type: vless
-    server: "45.82.251.116"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-
-  - name: "198.50.119.86-8080-e2be0db4"
+  - name: "🇨🇦198.50.119.86-8080-e2be0db4"
     type: vless
     server: "198.50.119.86"
     port: 8080
@@ -79,44 +131,123 @@ proxies:
       headers:
         Host: "telewebion.com"
 
-  - name: "103.113.70.21-443-3b9ff760"
+  - name: "🇨🇾45.82.251.249-8880-8dc7722c"
     type: vless
-    server: "103.113.70.21"
+    server: "45.82.251.249"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🇮🇷62.60.176.237-2052-c88811ea"
+    type: vless
+    server: "62.60.176.237"
+    port: 2052
+    uuid: "c88811ea-fead-4e2d-b34d-7d8725896304"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-"
+
+  - name: "🌍rgt.ae1autumn.dpdns.org-80-13ad36e6"
+    type: vless
+    server: "rgt.ae1autumn.dpdns.org"
+    port: 80
+    uuid: "13ad36e6-c091-43f2-8505-47d868dd544c"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/XR8So0uqFVa3vY9ZbxgW4"
+      headers:
+        Host: "rgt.ae1autumn.dpdns.org"
+
+  - name: "🇨🇾45.82.251.116-8880-8dc7722c"
+    type: vless
+    server: "45.82.251.116"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🌍pqh18v7.viripdirect.shop-8880-8dc7722c"
+    type: vless
+    server: "pqh18v7.viripdirect.shop"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🌍cdnjs.com-8880-e0f52d31"
+    type: vless
+    server: "cdnjs.com"
+    port: 8880
+    uuid: "e0f52d31-566b-437d-9961-1865e38d10fb"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/"
+      headers:
+        Host: "up.sourceforge.sbs"
+
+  - name: "🇦🇺151.101.105.226-80-Parsasho"
+    type: vless
+    server: "151.101.105.226"
+    port: 80
+    uuid: "Parsashonam-338"
+    network: xhttp
+    tls: false
+    udp: true
+
+  - name: "🇺🇸66.179.82.126-443-b1267991"
+    type: vless
+    server: "66.179.82.126"
     port: 443
-    uuid: "3b9ff760-6b22-467b-a54f-e25a82a40908"
+    uuid: "b1267991-59ff-4b67-b141-97e3ced4e7c8"
     network: tcp
     tls: true
     udp: true
     sni: "yahoo.com"
 
-  - name: "45.82.251.233-8880-8dc7722c"
+  - name: "🌍172.67.219.203-80-4e45c1b4"
     type: vless
-    server: "45.82.251.233"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
+    server: "172.67.219.203"
+    port: 80
+    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
+    network: ws
     tls: false
     udp: true
+    ws-opts:
+      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
+      headers:
+        Host: "nmk9o.1yy.ccwu.cc"
 
-  - name: "yesok42v2.ip4exordir.shop-8880-8dc7722c"
+  - name: "🇺🇸38.244.137.198-443-09748875"
     type: vless
-    server: "yesok42v2.ip4exordir.shop"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
+    server: "38.244.137.198"
+    port: 443
+    uuid: "09748875-9da3-440e-9809-9752e1dda1e4"
+    network: tcp
+    tls: true
     udp: true
+    sni: "google.com"
 
-  - name: "45.82.251.33-8880-8dc7722c"
+  - name: "🇦🇹152.53.51.29-22955-63f92f3c"
     type: vless
-    server: "45.82.251.33"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    server: "152.53.51.29"
+    port: 22955
+    uuid: "63f92f3c-447c-4283-80b9-0af8e164cdad"
     network: grpc
-    tls: false
+    tls: true
     udp: true
+    sni: "one-piece.com"
 
-  - name: "38.180.204.189-443-8e633674"
+  - name: "🇺🇸38.180.204.189-443-8e633674"
     type: vless
     server: "38.180.204.189"
     port: 443
@@ -126,7 +257,118 @@ proxies:
     udp: true
     sni: "google.com"
 
-  - name: "ov-france1.09vpn.com-80-25f86cb1"
+  - name: "🌍vip-83.f-sub.cfd-1517-6c827f78"
+    type: vless
+    server: "vip-83.f-sub.cfd"
+    port: 1517
+    uuid: "6c827f78-f774-4e9e-a76e-6c1c26fd7389"
+    network: tcp
+    tls: false
+    udp: true
+
+  - name: "🌍141.101.120.219-80-33e1a095"
+    type: vless
+    server: "141.101.120.219"
+    port: 80
+    uuid: "33e1a095-1e25-4198-bfe7-ec312e4f98ee"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "CREDibLe-pLaNt7ddV4jJ7et.OnEeaT.CO"
+
+  - name: "🌍104.18.4.46-8880-5b002005"
+    type: vless
+    server: "104.18.4.46"
+    port: 8880
+    uuid: "5b002005-7fb1-413e-8cbd-08e50c87c2ea"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      headers:
+        Host: "wetfleagidc-8tsbi8xd-v3.wet-flea-gidc.workers.dev"
+
+  - name: "🌍104.18.185.26-8880-7890ce31"
+    type: vless
+    server: "104.18.185.26"
+    port: 8880
+    uuid: "7890ce31-9a25-4fd4-90e7-80e5823ff510"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/Telegram🇨🇳@WangCai2/?ed=2560"
+      headers:
+        Host: "frejd.11258.workers.dev"
+
+  - name: "🇨🇭138.124.70.187-8443-010c8bf7"
+    type: vless
+    server: "138.124.70.187"
+    port: 8443
+    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "sun6-21.userapi.com"
+
+  - name: "🇬🇧140.238.100.35-40721-bf3e8944"
+    type: vless
+    server: "140.238.100.35"
+    port: 40721
+    uuid: "bf3e8944-8d26-47de-8748-b9aa74cce974"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yahoo.com"
+
+  - name: "🇮🇪193.57.138.53-40921-b042a503"
+    type: vless
+    server: "193.57.138.53"
+    port: 40921
+    uuid: "b042a503-3cb9-461f-994d-28a642133b5e"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yahoo.com"
+
+  - name: "🇬🇧51.68.198.114-2096-d5f2b8ad"
+    type: vless
+    server: "51.68.198.114"
+    port: 2096
+    uuid: "d5f2b8ad-5ee4-41fe-95e9-7adc1acb0549"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "play.google.com"
+
+  - name: "🇩🇪57.129.132.223-80-dbb78c94"
+    type: vless
+    server: "57.129.132.223"
+    port: 80
+    uuid: "dbb78c94-9f87-4d7d-b945-2000b60352fd"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless/"
+      headers:
+        Host: "---@External_Net---@External_Net---@External_Net---@External_Net---@External_Net"
+
+  - name: "🌍SC-TheNetherlands2.09vpn.com-80-e73df646"
+    type: vless
+    server: "SC-TheNetherlands2.09vpn.com"
+    port: 80
+    uuid: "e73df646-1f62-41bf-8c50-653497d603d0"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless/"
+
+  - name: "🌍ov-france1.09vpn.com-80-25f86cb1"
     type: vless
     server: "ov-france1.09vpn.com"
     port: 80
@@ -137,7 +379,433 @@ proxies:
     ws-opts:
       path: "/vless/"
 
-  - name: "afrcloud22.mmv.kr-80-aaaaaabb"
+  - name: "🇦🇹152.53.116.71-443-0d328214"
+    type: vless
+    server: "152.53.116.71"
+    port: 443
+    uuid: "0d328214-7ebc-413a-9820-2260b38d2242"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yahoo.com"
+
+  - name: "🇩🇪91.99.218.107-51269-0341d8f2"
+    type: vless
+    server: "91.99.218.107"
+    port: 51269
+    uuid: "0341d8f2-99e0-4f6c-af0a-345ac26815cf"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🌍104.18.185.26-80-e31085f9"
+    type: vless
+    server: "104.18.185.26"
+    port: 80
+    uuid: "e31085f9-7f55-4a7d-b00e-ce94149477cb"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "PrICKLy-AdverTisEMEnt6OaD5Z64MK.onEEaT.cO"
+
+  - name: "🇩🇪157.90.233.71-28223-ecf6a667"
+    type: vless
+    server: "157.90.233.71"
+    port: 28223
+    uuid: "ecf6a667-6288-4cb7-9023-211854cecbcb"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "www.sony.com"
+
+  - name: "🇫🇷45.140.164.142-2083-c501c66b"
+    type: vless
+    server: "45.140.164.142"
+    port: 2083
+    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    network: grpc
+    tls: true
+    udp: true
+    sni: "apple.com"
+
+  - name: "🇩🇪57.129.41.216-80-18535741"
+    type: vless
+    server: "57.129.41.216"
+    port: 80
+    uuid: "18535741-e8b3-4b43-9348-785b55936751"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless/"
+
+  - name: "🌍maxa06.gaterserver.ir-2096-42f4be04"
+    type: vless
+    server: "maxa06.gaterserver.ir"
+    port: 2096
+    uuid: "42f4be04-31d7-477d-9549-c1f79c6b9ee0"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "play.google.com"
+
+  - name: "🇩🇪37.120.184.180-80-53fff6cc"
+    type: vless
+    server: "37.120.184.180"
+    port: 80
+    uuid: "53fff6cc-b4ec-43e8-ade5-e0c42972fc33"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/news"
+      headers:
+        Host: "cdn.ir"
+
+  - name: "🇺🇸104.128.134.181-34816-fd058cd3"
+    type: vless
+    server: "104.128.134.181"
+    port: 34816
+    uuid: "fd058cd3-55fa-43ce-a634-1920b7d12c45"
+    network: raw
+    tls: false
+    udp: true
+
+  - name: "🇩🇪37.120.164.43-22955-63f92f3c"
+    type: vless
+    server: "37.120.164.43"
+    port: 22955
+    uuid: "63f92f3c-447c-4283-80b9-0af8e164cdad"
+    network: grpc
+    tls: true
+    udp: true
+    sni: "one-piece.com"
+
+  - name: "🇬🇧91.84.117.29-443-vltest1"
+    type: vless
+    server: "91.84.117.29"
+    port: 443
+    uuid: "vl_test1"
+    network: xhttp
+    tls: true
+    udp: true
+    sni: "vk.com"
+
+  - name: "🌍104.19.32.128-80-0ca855d9"
+    type: vless
+    server: "104.19.32.128"
+    port: 80
+    uuid: "0ca855d9-7c03-40eb-929b-919f934abdc3"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed=2048"
+      headers:
+        Host: "amirvpn.amirhm00100.workers.dev"
+
+  - name: "🇳🇱185.121.232.251-8443-startes"
+    type: vless
+    server: "185.121.232.251"
+    port: 8443
+    uuid: "star_test1"
+    network: xhttp
+    tls: true
+    udp: true
+    sni: "vk.com"
+
+  - name: "🇳🇱109.107.167.184-443-db444bee"
+    type: vless
+    server: "109.107.167.184"
+    port: 443
+    uuid: "db444bee-8212-5ff5-be40-47e1a7509eb8"
+    network: xhttp
+    tls: true
+    udp: true
+    sni: "sun6-21.userapi.com"
+
+  - name: "🌍ab.fxgoldensignals.com-51269-0341d8f2"
+    type: vless
+    server: "ab.fxgoldensignals.com"
+    port: 51269
+    uuid: "0341d8f2-99e0-4f6c-af0a-345ac26815cf"
+    network: grpc
+    tls: false
+    udp: true
+
+  - name: "🇸🇬47.82.1.12-59100-ca0e8520"
+    type: vless
+    server: "47.82.1.12"
+    port: 59100
+    uuid: "ca0e8520-42cd-49db-cfec-1295834b9e21"
+    network: tcp
+    tls: false
+    udp: true
+
+  - name: "🇳🇱195.26.224.112-8443-db444bee"
+    type: vless
+    server: "195.26.224.112"
+    port: 8443
+    uuid: "db444bee-8212-5ff5-be40-47e1a7509eb8"
+    network: xhttp
+    tls: true
+    udp: true
+    sni: "vk.com"
+
+  - name: "🇺🇸144.31.17.80-30677-b86c0cdc"
+    type: vless
+    server: "144.31.17.80"
+    port: 30677
+    uuid: "b86c0cdc-8a02-4da4-8693-72ba27005587"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "google.com"
+
+  - name: "🇬🇧51.38.32.227-2096-42f4be04"
+    type: vless
+    server: "51.38.32.227"
+    port: 2096
+    uuid: "42f4be04-31d7-477d-9549-c1f79c6b9ee0"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "play.google.com"
+
+  - name: "🇩🇪109.120.138.47-443-7c63f43f"
+    type: vless
+    server: "109.120.138.47"
+    port: 443
+    uuid: "7c63f43f-f526-49bb-b5c8-2be26e11ef00"
+    network: tcp
+    tls: false
+    udp: true
+
+  - name: "🌍vnjki.1xq.indevs.in-80-4e45c1b4"
+    type: vless
+    server: "vnjki.1xq.indevs.in"
+    port: 80
+    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
+      headers:
+        Host: "vnjki.1xq.indevs.in"
+
+  - name: "🌍104.18.12.149-2052-2271c50f"
+    type: vless
+    server: "104.18.12.149"
+    port: 2052
+    uuid: "2271c50f-ac7a-4d7f-8b04-64085b0daa56"
+    network: xhttp
+    tls: false
+    udp: true
+
+  - name: "🇩🇪157.173.127.225-443-11beaf11"
+    type: vless
+    server: "157.173.127.225"
+    port: 443
+    uuid: "11beaf11-726d-4c11-8ce9-27308c1c608c"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "analytics.google.com"
+
+  - name: "🇳🇱104.234.1.101-443-5bba0b6f"
+    type: vless
+    server: "104.234.1.101"
+    port: 443
+    uuid: "5bba0b6f-5d6d-4823-b41c-ce557fb4dae6"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "www.speedtest.net"
+
+  - name: "🇦🇹195.133.88.238-61809-899251ca"
+    type: vless
+    server: "195.133.88.238"
+    port: 61809
+    uuid: "899251ca-be66-4d21-84d8-bd7fbf10150b"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yandex.ru"
+
+  - name: "🇺🇸144.31.4.136-8081-f1449968"
+    type: vless
+    server: "144.31.4.136"
+    port: 8081
+    uuid: "f1449968-0329-468b-b56b-1c573ac2a767"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "www.apple.com"
+
+  - name: "🇧🇬45.141.234.159-30724-54e5a989"
+    type: vless
+    server: "45.141.234.159"
+    port: 30724
+    uuid: "54e5a989-5938-43ce-ba58-026ddbfd4d7b"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yandex.ru"
+
+  - name: "🌍172.64.155.209-80-860d8f27"
+    type: vless
+    server: "172.64.155.209"
+    port: 80
+    uuid: "860d8f27-ed60-4791-b6a0-e1e471d7ee6d"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "NICE-MaNAgEmeNts6CV0rMC2T.ONeEat.co."
+
+  - name: "🇩🇪91.107.254.105-2053-7153877e"
+    type: vless
+    server: "91.107.254.105"
+    port: 2053
+    uuid: "7153877e-dab2-4525-fa40-7e3f71dca814"
+    network: tcp
+    tls: false
+    udp: true
+
+  - name: "🌍pq-BosniaandHerzegovina1.09vpn.com-80-75e1fde7"
+    type: vless
+    server: "pq-BosniaandHerzegovina1.09vpn.com"
+    port: 80
+    uuid: "75e1fde7-6bf6-48ef-ba43-400e960e185b"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless/"
+
+  - name: "🌍172.67.200.61-80-4e45c1b4"
+    type: vless
+    server: "172.67.200.61"
+    port: 80
+    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
+      headers:
+        Host: "nmjk.1hh.ccwu.cc"
+
+  - name: "🌍104.16.250.22-80-e31085f9"
+    type: vless
+    server: "104.16.250.22"
+    port: 80
+    uuid: "e31085f9-7f55-4a7d-b00e-ce94149477cb"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "PrICKLy-AdverTisEMEnt6OaD5Z64MK.onEEaT.cO"
+
+  - name: "🌍172.66.128.70-80-2a2a8023"
+    type: vless
+    server: "172.66.128.70"
+    port: 80
+    uuid: "2a2a8023-3b4b-407d-a00a-7beb5a158148"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "SHAggy-AGREEMeNTSpUfz4utdI.SpOrTland.COMPANy."
+
+  - name: "🌍172.66.128.70-80-7d4a519b"
+    type: vless
+    server: "172.66.128.70"
+    port: 80
+    uuid: "7d4a519b-d270-434e-a42d-d39624577a92"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "BrIgHt-orGaNizaTioNAuhudDhESZ.spoRTlAnd.CoMpANY."
+
+  - name: "🇳🇱45.136.126.16-443-203b0744"
+    type: vless
+    server: "45.136.126.16"
+    port: 443
+    uuid: "203b0744-f943-4bba-a8d2-cab635467c46"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "google.com"
+
+  - name: "🇧🇬93.152.207.254-34045-d8dd94fd"
+    type: vless
+    server: "93.152.207.254"
+    port: 34045
+    uuid: "d8dd94fd-540e-461d-b5d4-acebef02c22a"
+    network: raw
+    tls: true
+    udp: true
+    sni: "visit-this-invitation-link-to-join-tg-enkelte-notif.ekt.me"
+
+  - name: "🇲🇩91.225.219.81-443-92d75dc4"
+    type: vless
+    server: "91.225.219.81"
+    port: 443
+    uuid: "92d75dc4-c432-43d0-a624-fd504929bc51"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yahoo.com"
+
+  - name: "🇫🇷152.228.162.19-80-25f86cb1"
+    type: vless
+    server: "152.228.162.19"
+    port: 80
+    uuid: "25f86cb1-2140-4085-abcb-c3a0ea7a4be0"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless/"
+
+  - name: "🌍nodejs.org-80-2a2a8023"
+    type: vless
+    server: "nodejs.org"
+    port: 80
+    uuid: "2a2a8023-3b4b-407d-a00a-7beb5a158148"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/?ed"
+      headers:
+        Host: "SHAggy-AGREEMeNTSpUfz4utdI.SpOrTland.COMPANy."
+
+  - name: "🇸🇮109.172.55.220-58198-d5d52c15"
+    type: vless
+    server: "109.172.55.220"
+    port: 58198
+    uuid: "d5d52c15-f963-42b8-971b-613fc9c5e7e3"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yandex.ru"
+
+  - name: "🌍afrcloud22.mmv.kr-80-aaaaaabb"
     type: vless
     server: "afrcloud22.mmv.kr"
     port: 80
@@ -150,18 +818,49 @@ proxies:
       headers:
         Host: "afrcloud22.mmv.kr"
 
-  - name: "47.82.1.12-59100-ca0e8520"
+  - name: "🇺🇸64.188.91.193-2053-b64ff004"
     type: vless
-    server: "47.82.1.12"
-    port: 59100
-    uuid: "ca0e8520-42cd-49db-cfec-1295834b9e21"
-    network: tcp
-    tls: false
+    server: "64.188.91.193"
+    port: 2053
+    uuid: "b64ff004-ec17-4cbb-9f32-c4eb7f4660e8"
+    network: grpc
+    tls: true
     udp: true
+    sni: "eh.vk.com"
 
-  - name: "152.53.51.24-22955-63f92f3c"
+  - name: "🌍206.251.49.154-55106-f81f0f59"
     type: vless
-    server: "152.53.51.24"
+    server: "206.251.49.154"
+    port: 55106
+    uuid: "f81f0f59-de9e-462c-841f-e0347a2a4071"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "bmw.com"
+
+  - name: "🌍de.appav.net-2083-c501c66b"
+    type: vless
+    server: "de.appav.net"
+    port: 2083
+    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    network: grpc
+    tls: true
+    udp: true
+    sni: "apple.com"
+
+  - name: "🌍vb27.homianco.ir-2096-d5f2b8ad"
+    type: vless
+    server: "vb27.homianco.ir"
+    port: 2096
+    uuid: "d5f2b8ad-5ee4-41fe-95e9-7adc1acb0549"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "vb27.homianco.ir"
+
+  - name: "🇦🇹152.53.50.126-22955-63f92f3c"
+    type: vless
+    server: "152.53.50.126"
     port: 22955
     uuid: "63f92f3c-447c-4283-80b9-0af8e164cdad"
     network: grpc
@@ -169,207 +868,71 @@ proxies:
     udp: true
     sni: "one-piece.com"
 
-  - name: "90.156.255.198-51114-8b575b35"
+  - name: "🇫🇷185.120.59.94-8443-010c8bf7"
     type: vless
-    server: "90.156.255.198"
-    port: 51114
-    uuid: "8b575b35-3c7c-42b0-ac80-2aa6b0d7717c"
+    server: "185.120.59.94"
+    port: 8443
+    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
     network: tcp
     tls: true
     udp: true
-    sni: "yahoo.com"
+    sni: "sun6-21.userapi.com"
 
-  - name: "172.67.195.13-80-4e45c1b4"
+  - name: "🇷🇺85.192.28.85-37890-2a53b73e"
     type: vless
-    server: "172.67.195.13"
-    port: 80
-    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
+    server: "85.192.28.85"
+    port: 37890
+    uuid: "2a53b73e-a426-4fad-bd1e-435a43b5e71f"
     network: ws
     tls: false
     udp: true
     ws-opts:
-      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
-      headers:
-        Host: "mkiuy.1x9.indevs.in"
+      path: "/joinTelegram/BalePingBot@BalePing@BaleSup"
 
-  - name: "25.25.25.0-8880-8e997404"
+  - name: "🇺🇸130.49.179.101-8443-010c8bf7"
     type: vless
-    server: "25.25.25.0"
-    port: 8880
-    uuid: "8e997404-cb62-4fa1-a8c9-c77a32f10153"
-    network: ws
-    tls: false
+    server: "130.49.179.101"
+    port: 8443
+    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
+    network: tcp
+    tls: true
     udp: true
-    ws-opts:
-      path: "/?ed=8880"
-      headers:
-        Host: "rightel.IRANCEELL.mci.it.www.speedtest.net.zula.ir.focusontrade.ir"
+    sni: "sun6-21.userapi.com"
 
-  - name: "141.101.120.10-80-33e1a095"
+  - name: "🇫🇷185.120.59.69-8443-010c8bf7"
     type: vless
-    server: "141.101.120.10"
-    port: 80
-    uuid: "33e1a095-1e25-4198-bfe7-ec312e4f98ee"
-    network: ws
-    tls: false
+    server: "185.120.59.69"
+    port: 8443
+    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
+    network: tcp
+    tls: true
     udp: true
-    ws-opts:
-      path: "/?ed"
-      headers:
-        Host: "CREDibLe-pLaNt7ddV4jJ7et.OnEeaT.CO"
+    sni: "sun6-21.userapi.com"
 
-  - name: "nl-78w-c.southnetworks.cloud-80-094e66a9"
+  - name: "🌍deb.cdn.stemstep.cloud-443-c5bdca74"
     type: vless
-    server: "nl-78w-c.southnetworks.cloud"
-    port: 80
-    uuid: "094e66a9-8d92-41fe-85ad-8e7bf9b5fcaa"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/getWorkerUpdates"
-
-  - name: "104.17.25.173-2052-f8ae018b"
-    type: vless
-    server: "104.17.25.173"
-    port: 2052
-    uuid: "f8ae018b-b84d-4c9b-b03b-4642c3a25977"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/?ed"
-      headers:
-        Host: "ExEMplAry-MILkytsxQiQYso.sPortlaNd.CoMPANy"
-
-  - name: "40.160.14.104-8880-6251f84e"
-    type: vless
-    server: "40.160.14.104"
-    port: 8880
-    uuid: "6251f84e-9c02-4140-921c-6b47d394fb96"
-    network: grpc
-    tls: false
-    udp: true
-
-  - name: "62.60.176.237-2052-c88811ea"
-    type: vless
-    server: "62.60.176.237"
-    port: 2052
-    uuid: "c88811ea-fead-4e2d-b34d-7d8725896304"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-Telegramjoin:@V2Ray_Rolly-"
-
-  - name: "104.21.233.186-2086-636de463"
-    type: vless
-    server: "104.21.233.186"
-    port: 2086
-    uuid: "636de463-b509-4631-adc6-400b21733278"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/vgn80ag4q5o0oxj5"
-      headers:
-        Host: "index.harmony610.workers.dev"
-
-  - name: "172.67.159.58-80-4e45c1b4"
-    type: vless
-    server: "172.67.159.58"
-    port: 80
-    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
-      headers:
-        Host: "bgn.1dd.ccwu.cc"
-
-  - name: "104.21.49.218-80-4e45c1b4"
-    type: vless
-    server: "104.21.49.218"
-    port: 80
-    uuid: "4e45c1b4-9107-45dd-9995-cdf7cbb44d9d"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/hBasD7EdpBQ0zGAzsYHmsMrnO"
-      headers:
-        Host: "mkiuy.1x9.indevs.in"
-
-  - name: "147.45.217.250-443-eb162ab1"
-    type: vless
-    server: "147.45.217.250"
+    server: "deb.cdn.stemstep.cloud"
     port: 443
-    uuid: "eb162ab1-a006-4931-b1b3-8fc88a22b10e"
-    network: xhttp
+    uuid: "c5bdca74-975a-4a03-863e-12b8d72a44f0"
+    network: grpc
     tls: true
     udp: true
-    sni: "sun6-22.userapi.com"
+    sni: "deb.cdn.stemstep.cloud"
 
-  - name: "87.120.219.99-55057-5d837e94"
+  - name: "🌍support.zoom.us-80-fac62eac"
     type: vless
-    server: "87.120.219.99"
-    port: 55057
-    uuid: "5d837e94-967d-43a8-8e36-440ddfa4fd15"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "ab.fxgoldensignals.com-36454-98fb333c"
-    type: vless
-    server: "ab.fxgoldensignals.com"
-    port: 36454
-    uuid: "98fb333c-3d84-4fa4-b1f7-1683b509f65a"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "185.143.234.235-80-087d8602"
-    type: vless
-    server: "185.143.234.235"
+    server: "support.zoom.us"
     port: 80
-    uuid: "087d8602-503b-4091-9f05-44c20792083c"
+    uuid: "fac62eac-1eec-4260-a991-0cac2f8745a3"
     network: ws
     tls: false
     udp: true
     ws-opts:
-      path: "/"
+      path: "/@Tech_Sonic"
       headers:
-        Host: "oon.visaups.ir"
+        Host: "free-server.techsonic.ggff.net"
 
-  - name: "bhy7.ae1autumn.dpdns.org-80-13ad36e6"
-    type: vless
-    server: "bhy7.ae1autumn.dpdns.org"
-    port: 80
-    uuid: "13ad36e6-c091-43f2-8505-47d868dd544c"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/XR8So0uqFVa3vY9ZbxgW4"
-      headers:
-        Host: "bhy7.ae1autumn.dpdns.org"
-
-  - name: "152.228.162.19-80-5ce84688"
-    type: vless
-    server: "152.228.162.19"
-    port: 80
-    uuid: "5ce84688-f535-46ad-a512-37b17becf6ea"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/vless/"
-      headers:
-        Host: "akamaized.net"
-
-  - name: "138.124.70.128-8443-010c8bf7"
+  - name: "🇨🇭138.124.70.128-8443-010c8bf7"
     type: vless
     server: "138.124.70.128"
     port: 8443
@@ -379,200 +942,39 @@ proxies:
     udp: true
     sni: "sun6-21.userapi.com"
 
-  - name: "37.233.82.140-40478-e977d854"
+  - name: "🇨🇾185.5.74.245-443-aa0cdb77"
     type: vless
-    server: "37.233.82.140"
-    port: 40478
-    uuid: "e977d854-33f3-4345-abee-bf3fa9a6d880"
+    server: "185.5.74.245"
+    port: 443
+    uuid: "aa0cdb77-f1a7-42b8-a6e9-f814e3455137"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "www.apple.com"
+
+  - name: "🇦🇹152.53.116.71-443-1e878456"
+    type: vless
+    server: "152.53.116.71"
+    port: 443
+    uuid: "1e878456-0f00-4a85-99a6-1d69bdc62e3d"
     network: tcp
     tls: true
     udp: true
     sni: "yahoo.com"
 
-  - name: "162.19.228.119-80-dc8eccdb"
+  - name: "🇳🇱88.210.12.210-443-e31807ec"
     type: vless
-    server: "162.19.228.119"
-    port: 80
-    uuid: "dc8eccdb-ecfa-435f-9ac1-5dc4882e7b51"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/http#Telegram@V2ray_Alpha/?ed=2560"
-      headers:
-        Host: "google.com"
-
-  - name: "104.234.1.101-443-5bba0b6f"
-    type: vless
-    server: "104.234.1.101"
+    server: "88.210.12.210"
     port: 443
-    uuid: "5bba0b6f-5d6d-4823-b41c-ce557fb4dae6"
+    uuid: "e31807ec-8586-4c0f-b011-80f4074beea9"
     network: tcp
     tls: true
     udp: true
-    sni: "www.speedtest.net"
+    sni: "yahoo.com"
 
-  - name: "195.154.200.13-17401-add14a5b"
+  - name: "🌍172.64.154.211-2052-5e62ddcf"
     type: vless
-    server: "195.154.200.13"
-    port: 17401
-    uuid: "add14a5b-f648-4423-8a1f-8b8f54c0daef"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "itunes.apple.com"
-
-  - name: "144.31.1.24-8443-e384913f"
-    type: vless
-    server: "144.31.1.24"
-    port: 8443
-    uuid: "e384913f-8863-47b4-8858-a84b68abb4a6"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "eh.vk.com"
-
-  - name: "ip3-fast.tyryqyserver.ir-80-58c4d669"
-    type: vless
-    server: "ip3-fast.tyryqyserver.ir"
-    port: 80
-    uuid: "58c4d669-2e96-419b-b85a-df2938e535d5"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/?ed=2052"
-      headers:
-        Host: "norbertde1.global.ssl.fastly.net"
-
-  - name: "185.231.204.68-8443-d2b13893"
-    type: vless
-    server: "185.231.204.68"
-    port: 8443
-    uuid: "d2b13893beea4e72af629be21192e819"
-    network: xhttp
-    tls: true
-    udp: true
-    sni: "m.vk.com"
-
-  - name: "157.90.233.71-28223-ecf6a667"
-    type: vless
-    server: "157.90.233.71"
-    port: 28223
-    uuid: "ecf6a667-6288-4cb7-9023-211854cecbcb"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "www.sony.com"
-
-  - name: "104.128.134.181-34816-05a6897b"
-    type: vless
-    server: "104.128.134.181"
-    port: 34816
-    uuid: "05a6897b-bdea-46d9-8654-89bceb208504"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "151.236.114.162-6443-95796d3c"
-    type: vless
-    server: "151.236.114.162"
-    port: 6443
-    uuid: "95796d3c-955c-435f-8222-481862515236"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "max.ru"
-
-  - name: "vip-77.f-sub.cfd-1517-6c827f78"
-    type: vless
-    server: "vip-77.f-sub.cfd"
-    port: 1517
-    uuid: "6c827f78-f774-4e9e-a76e-6c1c26fd7389"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "usa.speedbluepanel.sbs-42354-bcabb20a"
-    type: vless
-    server: "usa.speedbluepanel.sbs"
-    port: 42354
-    uuid: "bcabb20a-889a-4fdb-81c9-2ba867dec409"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "195.26.224.112-8443-db444bee"
-    type: vless
-    server: "195.26.224.112"
-    port: 8443
-    uuid: "db444bee-8212-5ff5-be40-47e1a7509eb8"
-    network: xhttp
-    tls: true
-    udp: true
-    sni: "vk.com"
-
-  - name: "65.109.185.170-8080-63d4be35"
-    type: vless
-    server: "65.109.185.170"
-    port: 8080
-    uuid: "63d4be35-a762-4bad-9185-d501fe5db7b4"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/"
-      headers:
-        Host: "188.114.96.7"
-
-  - name: "46.225.185.219-443-81268ee0"
-    type: vless
-    server: "46.225.185.219"
-    port: 443
-    uuid: "81268ee0-35c3-4003-9882-7d3257e3aa9a"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/connect"
-      headers:
-        Host: "github.com"
-
-  - name: "104.21.224.5-80-e31085f9"
-    type: vless
-    server: "104.21.224.5"
-    port: 80
-    uuid: "e31085f9-7f55-4a7d-b00e-ce94149477cb"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/?ed"
-      headers:
-        Host: "PrICKLy-AdverTisEMEnt6OaD5Z64MK.onEEaT.cO"
-
-  - name: "51.89.165.128-2096-d5f2b8ad"
-    type: vless
-    server: "51.89.165.128"
-    port: 2096
-    uuid: "d5f2b8ad-5ee4-41fe-95e9-7adc1acb0549"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "play.google.com"
-
-  - name: "104.128.134.181-34816-fd058cd3"
-    type: vless
-    server: "104.128.134.181"
-    port: 34816
-    uuid: "fd058cd3-55fa-43ce-a634-1920b7d12c45"
-    network: raw
-    tls: false
-    udp: true
-
-  - name: "172.64.155.209-2052-5e62ddcf"
-    type: vless
-    server: "172.64.155.209"
+    server: "172.64.154.211"
     port: 2052
     uuid: "5e62ddcf-78c9-4b15-803a-436c8c839ddc"
     network: ws
@@ -581,474 +983,9 @@ proxies:
     ws-opts:
       path: "/"
       headers:
-        Host: "oBEDiENt-noiseqJf5ja18yF.wIndLer.CO.UK."
+        Host: "oBEDiENt-noiseqJf5ja18yF.wIndLer.CO.UK"
 
-  - name: "germ2.vpnhub.shop-8081-f1449968"
-    type: vless
-    server: "germ2.vpnhub.shop"
-    port: 8081
-    uuid: "f1449968-0329-468b-b56b-1c573ac2a767"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "www.apple.com"
-
-  - name: "93.94.51.19-56864-87580984"
-    type: vless
-    server: "93.94.51.19"
-    port: 56864
-    uuid: "87580984-c2ef-4f44-9c7e-0b216f99aa87"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "45.12.135.99-443-c5fcc644"
-    type: vless
-    server: "45.12.135.99"
-    port: 443
-    uuid: "c5fcc644-839d-4fbd-a2ee-421ca728751a"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yahoo.com"
-
-  - name: "nl.appav.online-2083-95abaefc"
-    type: vless
-    server: "nl.appav.online"
-    port: 2083
-    uuid: "95abaefc-7861-417a-81b7-166cb788ce1a"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "apple.com"
-
-  - name: "104.18.32.47-80-860d8f27"
-    type: vless
-    server: "104.18.32.47"
-    port: 80
-    uuid: "860d8f27-ed60-4791-b6a0-e1e471d7ee6d"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/?ed"
-      headers:
-        Host: "NICE-MaNAgEmeNts6CV0rMC2T.ONeEat.co."
-
-  - name: "144.31.4.136-8081-f1449968"
-    type: vless
-    server: "144.31.4.136"
-    port: 8081
-    uuid: "f1449968-0329-468b-b56b-1c573ac2a767"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "www.apple.com"
-
-  - name: "yes.hate-me.eu.org-80-dc5ca27e"
-    type: vless
-    server: "yes.hate-me.eu.org"
-    port: 80
-    uuid: "dc5ca27e-8ab3-476a-94a4-7b29a0c00b3f"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/vless"
-      headers:
-        Host: "cdn.who.int.path.xyz-my.eu.org"
-
-  - name: "91.84.117.29-443-a4037b4c"
-    type: vless
-    server: "91.84.117.29"
-    port: 443
-    uuid: "a4037b4c-6a9d-528c-9efb-7d801cce8adb"
-    network: xhttp
-    tls: true
-    udp: true
-    sni: "vk.com"
-
-  - name: "104.21.15.212-8080-4c9541c7"
-    type: vless
-    server: "104.21.15.212"
-    port: 8080
-    uuid: "4c9541c7-5fa1-403c-84af-175e3b25a27f"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/"
-      headers:
-        Host: "201.58vtg99l.workers.dev"
-
-  - name: "93.94.51.11-53320-c1e66fa3"
-    type: vless
-    server: "93.94.51.11"
-    port: 53320
-    uuid: "c1e66fa3-951b-436c-a95a-b2abbaecb195"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "fffvvbgh.05o.ccwu.cc-80-2bfded8d"
-    type: vless
-    server: "fffvvbgh.05o.ccwu.cc"
-    port: 80
-    uuid: "2bfded8d-6a7c-4c18-aaa5-fc65b955d50c"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/HoBSIvRY1m5xOEJ3dX414bl"
-      headers:
-        Host: "fffvvbgh.05o.ccwu.cc"
-
-  - name: "45.141.234.159-30724-54e5a989"
-    type: vless
-    server: "45.141.234.159"
-    port: 30724
-    uuid: "54e5a989-5938-43ce-ba58-026ddbfd4d7b"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "145.249.109.121-8443-93961d05"
-    type: vless
-    server: "145.249.109.121"
-    port: 8443
-    uuid: "93961d050c164d01aa96cc07522338d9"
-    network: xhttp
-    tls: true
-    udp: true
-    sni: "m.vk.com"
-
-  - name: "93.94.51.13-25451-a90f4742"
-    type: vless
-    server: "93.94.51.13"
-    port: 25451
-    uuid: "a90f4742-2f30-47b5-9f17-b6ab04cc98e8"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "159.195.41.69-22955-63f92f3c"
-    type: vless
-    server: "159.195.41.69"
-    port: 22955
-    uuid: "63f92f3c-447c-4283-80b9-0af8e164cdad"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "one-piece.com"
-
-  - name: "51.250.87.167-443-76f385df"
-    type: vless
-    server: "51.250.87.167"
-    port: 443
-    uuid: "76f385df-bb5c-4e92-b60b-fce540b0a6a0"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "51.250.87.167"
-
-  - name: "195.133.88.238-61809-899251ca"
-    type: vless
-    server: "195.133.88.238"
-    port: 61809
-    uuid: "899251ca-be66-4d21-84d8-bd7fbf10150b"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "104.17.25.173-80-e31085f9"
-    type: vless
-    server: "104.17.25.173"
-    port: 80
-    uuid: "e31085f9-7f55-4a7d-b00e-ce94149477cb"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/?ed"
-      headers:
-        Host: "PrICKLy-AdverTisEMEnt6OaD5Z64MK.onEEaT.cO"
-
-  - name: "109.172.55.220-58198-d5d52c15"
-    type: vless
-    server: "109.172.55.220"
-    port: 58198
-    uuid: "d5d52c15-f963-42b8-971b-613fc9c5e7e3"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "185.120.59.162-8443-010c8bf7"
-    type: vless
-    server: "185.120.59.162"
-    port: 8443
-    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "sun6-21.userapi.com"
-
-  - name: "82.115.7.170-443-fdfca0ba"
-    type: vless
-    server: "82.115.7.170"
-    port: 443
-    uuid: "fdfca0ba-1cb0-4369-a77c-92bb06d7528b"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "nla.cdn.stemstep.cloud"
-
-  - name: "pq-albania1.09vpn.com-80-8910cbb3"
-    type: vless
-    server: "pq-albania1.09vpn.com"
-    port: 80
-    uuid: "8910cbb3-33b1-4266-a243-ac780ac63394"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/vless/"
-
-  - name: "109.172.55.232-13760-5fad3ad2"
-    type: vless
-    server: "109.172.55.232"
-    port: 13760
-    uuid: "5fad3ad2-1a94-40d0-85bb-51eb83f5c7df"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yandex.ru"
-
-  - name: "84.201.168.65-8443-488fa2ff"
-    type: vless
-    server: "84.201.168.65"
-    port: 8443
-    uuid: "488fa2ff-440b-46b7-b0e0-211bcf923d5e"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "api-maps.yandex.ru"
-
-  - name: "185.120.59.3-8443-010c8bf7"
-    type: vless
-    server: "185.120.59.3"
-    port: 8443
-    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "sun6-21.userapi.com"
-
-  - name: "ab.fxgoldensignals.com-51269-0341d8f2"
-    type: vless
-    server: "ab.fxgoldensignals.com"
-    port: 51269
-    uuid: "0341d8f2-99e0-4f6c-af0a-345ac26815cf"
-    network: grpc
-    tls: false
-    udp: true
-
-  - name: "dvgt.zem.indevs.in-80-c558328b"
-    type: vless
-    server: "dvgt.zem.indevs.in"
-    port: 80
-    uuid: "c558328b-eb46-424c-b9e0-574770f0b072"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/v8clafFSnPXNC0BXGtJ"
-      headers:
-        Host: "dvgt.zem.indevs.in"
-
-  - name: "91.225.219.81-443-92d75dc4"
-    type: vless
-    server: "91.225.219.81"
-    port: 443
-    uuid: "92d75dc4-c432-43d0-a624-fd504929bc51"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yahoo.com"
-
-  - name: "45.15.170.237-80-b4819c49"
-    type: vless
-    server: "45.15.170.237"
-    port: 80
-    uuid: "b4819c49-6c7e-4b57-9b9b-c73031e1de11"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/vless/"
-
-  - name: "185.120.59.15-8443-010c8bf7"
-    type: vless
-    server: "185.120.59.15"
-    port: 8443
-    uuid: "010c8bf7-0a43-404f-a6c5-2427acb4d476"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "sun6-21.userapi.com"
-
-  - name: "45.145.163.115-39771-e5bd3d75"
-    type: vless
-    server: "45.145.163.115"
-    port: 39771
-    uuid: "e5bd3d75-06b3-490e-9651-930b1dc29cdb"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "yahoo.com"
-
-  - name: "45.12.136.48-443-0f6c83bc"
-    type: vless
-    server: "45.12.136.48"
-    port: 443
-    uuid: "0f6c83bc-34ba-4ca1-96e6-08b3620cbce5"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "mirror.yandex.ru"
-
-  - name: "wolfb03.servers1mart.ir-2096-3f42b528"
-    type: vless
-    server: "wolfb03.servers1mart.ir"
-    port: 2096
-    uuid: "3f42b528-59ef-45f9-9ba3-6292ca46f909"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "play.google.com"
-
-  - name: "vps.zakir.web.id-80-ca73d911"
-    type: vless
-    server: "vps.zakir.web.id"
-    port: 80
-    uuid: "ca73d911-29f4-42d8-ada5-81dee679e96a"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "vless"
-      headers:
-        Host: "vps.zakir.web.id"
-
-  - name: "94.131.104.229-2040-14818654"
-    type: vless
-    server: "94.131.104.229"
-    port: 2040
-    uuid: "14818654-7689-453a-9a1f-4c72f89782d5"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "tradingview.com"
-
-  - name: "45.43.79.73-443-f79d200c"
-    type: vless
-    server: "45.43.79.73"
-    port: 443
-    uuid: "f79d200c-ac04-45a8-98a7-031d629f705c"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "google.com"
-
-  - name: "45.89.109.25-18278-7a30b7fc"
-    type: vless
-    server: "45.89.109.25"
-    port: 18278
-    uuid: "7a30b7fc-4868-4d1d-84b8-16a3d3df0139"
-    network: raw
-    tls: true
-    udp: true
-    sni: "yahoo.com"
-
-  - name: "riga-node.genadata.online-2040-14818654"
-    type: vless
-    server: "riga-node.genadata.online"
-    port: 2040
-    uuid: "14818654-7689-453a-9a1f-4c72f89782d5"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "tradingview.com"
-
-  - name: "217.13.104.165-443-13f33829"
-    type: vless
-    server: "217.13.104.165"
-    port: 443
-    uuid: "13f33829-ee76-47de-940b-9398a8c89c12"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "login.vk.com"
-
-  - name: "77.239.125.6-443-493d5565"
-    type: vless
-    server: "77.239.125.6"
-    port: 443
-    uuid: "493d5565-9c06-4d2f-a252-cbd9d2be3516"
-    network: tcp
-    tls: true
-    udp: true
-    sni: "www.vk.com"
-
-  - name: "ips.gcore.mobileemdad.top-42539-118abc77"
-    type: vless
-    server: "ips.gcore.mobileemdad.top"
-    port: 42539
-    uuid: "118abc77-5e80-427d-a83e-90471d76c82f"
-    network: tcp
-    tls: false
-    udp: true
-
-  - name: "159.195.42.131-22955-63f92f3c"
-    type: vless
-    server: "159.195.42.131"
-    port: 22955
-    uuid: "63f92f3c-447c-4283-80b9-0af8e164cdad"
-    network: grpc
-    tls: true
-    udp: true
-    sni: "one-piece.com"
-
-  - name: "103.245.237.124-58202-cca053d5"
-    type: vless
-    server: "103.245.237.124"
-    port: 58202
-    uuid: "cca053d5-7123-4a87-83d6-babe4e9c8115"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/"
-
-  - name: "c6y.0c0.ccwu.cc-80-60c4d55d"
-    type: vless
-    server: "c6y.0c0.ccwu.cc"
-    port: 80
-    uuid: "60c4d55d-bee3-4719-9568-aabf45153f9f"
-    network: ws
-    tls: false
-    udp: true
-    ws-opts:
-      path: "/gPvZ4oCcNDyuc3szX7xhuvpEm"
-      headers:
-        Host: "c6y.0c0.ccwu.cc"
-
-  - name: "152.53.49.130-22955-63f92f3c"
+  - name: "🇦🇹152.53.49.130-22955-63f92f3c"
     type: vless
     server: "152.53.49.130"
     port: 22955
@@ -1058,16 +995,79 @@ proxies:
     udp: true
     sni: "one-piece.com"
 
-  - name: "57.129.132.223-80-dbb78c94"
+  - name: "🌍gbnnju.0og.ccwu.cc-80-2bfded8d"
     type: vless
-    server: "57.129.132.223"
+    server: "gbnnju.0og.ccwu.cc"
     port: 80
-    uuid: "dbb78c94-9f87-4d7d-b945-2000b60352fd"
+    uuid: "2bfded8d-6a7c-4c18-aaa5-fc65b955d50c"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/HoBSIvRY1m5xOEJ3dX414bl"
+      headers:
+        Host: "gbnnju.0og.ccwu.cc"
+
+  - name: "🌍api.useinsider.com-80-8b26f6de"
+    type: vless
+    server: "api.useinsider.com"
+    port: 80
+    uuid: "8b26f6de-48ee-4171-9fbe-89c153863e17"
+    network: ws
+    tls: false
+    udp: true
+    ws-opts:
+      path: "/vless"
+      headers:
+        Host: "payload.xyz-my.eu.org"
+
+  - name: "🌍vkcbaza.appav.online-8443-c501c66b"
+    type: vless
+    server: "vkcbaza.appav.online"
+    port: 8443
+    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    network: grpc
+    tls: true
+    udp: true
+    sni: "sso.passport.yandex.ru"
+
+  - name: "🌍OV-Germany1.09vpn.com-80-18535741"
+    type: vless
+    server: "OV-Germany1.09vpn.com"
+    port: 80
+    uuid: "18535741-e8b3-4b43-9348-785b55936751"
     network: ws
     tls: false
     udp: true
     ws-opts:
       path: "/vless/"
-      headers:
-        Host: "---@External_Net---@External_Net---@External_Net---@External_Net---@External_Net"
+
+  - name: "🇵🇱77.83.245.171-43816-a893f940"
+    type: vless
+    server: "77.83.245.171"
+    port: 43816
+    uuid: "a893f940-8725-4b3e-8b77-caa1380e95dc"
+    network: tcp
+    tls: true
+    udp: true
+    sni: "yandex.ru"
+
+  - name: "🇩🇪87.106.189.9-443-4940c0ba"
+    type: vless
+    server: "87.106.189.9"
+    port: 443
+    uuid: "4940c0ba-5afb-4200-ba01-b643f9d4a91b"
+    network: raw
+    tls: true
+    udp: true
+    sni: "yahoo.com"
+
+  - name: "🌍vip-81.f-sub.cfd-1517-6c827f78"
+    type: vless
+    server: "vip-81.f-sub.cfd"
+    port: 1517
+    uuid: "6c827f78-f774-4e9e-a76e-6c1c26fd7389"
+    network: tcp
+    tls: false
+    udp: true
 
