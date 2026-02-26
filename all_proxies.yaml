@@ -618,7 +618,7 @@ proxies:
   - vless://621d5f40-707c-40f0-8b5c-253d38e1d0cb@95.163.210.159:80?encryption=none&type=tcp&security=reality&fp=chrome&sni=max.ru&pbk=w28tNIWZCfW4X9aQDLwXECK3pU59zihJ0GIMA13u5X8#%F0%9F%87%AB%F0%9F%87%B7%20France%20%7C%20%5BIPv6%5D%20%5B%2ACIDR%5D%20VK
   - vless://621d5f40-707c-40f0-8b5c-253d38e1d0cb@95.163.210.159:80?encryption=none&type=tcp&security=reality&fp=chrome&sni=max.ru&pbk=w28tNIWZCfW4X9aQDLwXECK3pU59zihJ0GIMA13u5X8#%F0%9F%87%AB%F0%9F%87%B7%20France%20%E2%80%94%20%23592
   - vless://6234be9d-4bfd-479e-ab95-b7c009971667@194.87.219.24:25620?encryption=none&type=raw&headerType=none&security=reality&fp=chrome&pbk=xuyz-KWCYYwC9QfIqM0ur1ki0rd7PClzYgp5olAWPnI&sni=www.ozon.ru&sid=c476b6083f325946#%F0%9F%87%B3%F0%9F%87%B1%20The%20Netherlands%20%5BSNI-RU%5D%20www.ozon.ru
-  - vless://6251f84e-9c02-4140-921c-6b47d394fb96@40.160.14.104:8880?encryption=none&type=grpc#US🇺🇸
+  - vless://6251f84e-9c02-4140-921c-6b47d394fb96@40.160.14.104:8880?encryption=none&type=grpc#INT🌍
   - vless://6251f84e-9c02-4140-921c-6b47d394fb96@40.160.14.104:8880?encryption=none&type=grpc&security=none#[🇺🇸]
   - vless://6251f84e-9c02-4140-921c-6b47d394fb96@40.160.14.104:8880?path=%2F&type=grpc#%F0%9F%87%BA%F0%9F%87%B8
   - vless://6251f84e-9c02-4140-921c-6b47d394fb96@40.160.4.127:8880?path=%2F&type=grpc#%F0%9F%87%BA%F0%9F%87%B8
