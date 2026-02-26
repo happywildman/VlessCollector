@@ -76,7 +76,8 @@ jobs:
           
           echo "Collection completed at $(date)"
           
-          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null || echo 0)
+          # ИСПРАВЛЕНИЕ 1: корректный подсчёт без multi-line
+          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || total_proxies=0
           total_proxies=${total_proxies:-0}
           echo "Found $total_proxies proxies"
 
@@ -142,7 +143,8 @@ jobs:
             sort -u /tmp/ping_passed.txt | sed 's/^/  - /' >> ping.yaml
           fi
           
-          passed=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
+          # ИСПРАВЛЕНИЕ 2: корректный подсчёт
+          passed=$(grep -c '^-' ping.yaml 2>/dev/null) || passed=0
           passed=${passed:-0}
           
           echo ""
@@ -158,13 +160,12 @@ jobs:
           set -e
           echo "Starting TRAFFIC TEST with Xray at $(date)"
           
-          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip  
           unzip -q Xray-linux-64.zip -d xray/
           chmod +x xray/xray
           
           ./xray/xray version || echo "⚠️ Xray version check failed"
           
-          # Python-скрипт для генерации конфига Xray (упрощённая генерация)
           cat > /tmp/gen_xray_config.py << 'PYTHONSCRIPT'
 import json, sys, urllib.parse
 
@@ -354,15 +355,16 @@ PYTHONSCRIPT
             done
           fi
           
-          passed=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
+          # ИСПРАВЛЕНИЕ 3: корректный подсчёт
+          passed=$(grep -c '^-' traff.yaml 2>/dev/null) || passed=0
           passed=${passed:-0}
           
           echo ""
           echo "📊 HTTP Code Distribution:"
           if [ -f /tmp/xray_results/http_codes.txt ] && [ -s /tmp/xray_results/http_codes.txt ]; then
-            echo "   HTTP 204 (success): $(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null || echo 0)"
-            echo "   HTTP 000 (no conn): $(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null || echo 0)"
-            other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null || echo 0)
+            echo "   HTTP 204 (success): $(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null) || echo 0"
+            echo "   HTTP 000 (no conn): $(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null) || echo 0"
+            other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null) || other=0
             echo "   Other codes: $other"
           fi
           
@@ -391,7 +393,7 @@ PYTHONSCRIPT
           
           if [ ! -f xray/xray ]; then
             echo "⚠️ Xray not found, downloading..."
-            wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+            wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip  
             unzip -q Xray-linux-64.zip -d xray/
             chmod +x xray/xray
           fi
@@ -546,11 +548,14 @@ PYTHONSCRIPT
           echo "Selecting TOP 100 fastest proxies..."
           
           if [ $measured -gt 0 ] && [ -f /tmp/speed_results.txt ]; then
-            sort -n /tmp/speed_results.txt | head -100 | cut -d'|' -f2 | while read idx; do
+            # ИСПРАВЛЕНИЕ 4: надёжный отбор TOP 100 без subshell проблем
+            sort -n /tmp/speed_results.txt | head -100 | cut -d'|' -f2 > /tmp/top_indices.txt
+            while read -r idx; do
               [ -f "/tmp/speed_test/proxy_${idx}.txt" ] && cat "/tmp/speed_test/proxy_${idx}.txt" >> clash.yaml
-            done
+            done < /tmp/top_indices.txt
             
-            final_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
+            # ИСПРАВЛЕНИЕ 5: правильный grep паттерн для clash.yaml (учитывает отступы)
+            final_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || final_count=0
             final_count=${final_count:-0}
             echo "✅ Selected TOP $final_count fastest proxies"
           else
@@ -558,13 +563,14 @@ PYTHONSCRIPT
             echo "proxies:" > clash.yaml
           fi
           
-          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null || echo 0)
+          # ИСПРАВЛЕНИЕ 6: корректный подсчёт для статистики
+          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || all_count=0
           all_count=${all_count:-0}
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || ping_count=0
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || traff_count=0
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
+          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || clash_count=0
           clash_count=${clash_count:-0}
           
           echo ""
@@ -574,7 +580,7 @@ PYTHONSCRIPT
           echo "traff.yaml: $traff_count after traffic test"
           echo "clash.yaml: $clash_count TOP 100"
           
-          rm -f /tmp/speed_results.txt
+          rm -f /tmp/speed_results.txt /tmp/top_indices.txt
           rm -rf /tmp/speed_test
 
       - name: Show Sample
@@ -592,19 +598,15 @@ PYTHONSCRIPT
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
+          # ИСПРАВЛЕНИЕ 7: корректный подсчёт для commit сообщения
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || ping_count=0
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || traff_count=0
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
+          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || clash_count=0
           clash_count=${clash_count:-0}
           
           git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
           git commit -m "Update proxies $(date) - P:${ping_count} T:${traff_count} C:${clash_count}"
           git push
           echo "Changes pushed successfully"
-
-      - name: Cleanup
-        run: |
-          rm -rf /tmp/xray_results /tmp/xray_* /tmp/speed_test xray/ Xray-linux-64.zip /tmp/gen_xray_config.py
-          echo "Cleanup complete"
