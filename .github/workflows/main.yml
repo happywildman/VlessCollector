@@ -362,10 +362,13 @@ PYTHONSCRIPT
           echo ""
           echo "📊 HTTP Code Distribution:"
           if [ -f /tmp/xray_results/http_codes.txt ] && [ -s /tmp/xray_results/http_codes.txt ]; then
-            echo "   HTTP 204 (success): $(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null) || echo 0"
-            echo "   HTTP 000 (no conn): $(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null) || echo 0"
-            other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null) || other=0
-            echo "   Other codes: $other"
+            # Корректный подсчёт без синтаксических ошибок
+            count_204=$(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_204=0
+            count_000=$(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_000=0
+            count_other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_other=0
+            echo "   HTTP 204 (success): $count_204"
+            echo "   HTTP 000 (no conn): $count_000"
+            echo "   Other codes: $count_other"
           fi
           
           echo ""
