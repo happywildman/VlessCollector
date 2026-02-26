@@ -23,6 +23,9 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 import urllib.parse
 
+# === НОВЫЙ ИМПОРТ ДЛЯ GEOIP ===
+import geoip2.database
+
 # ============================================================================
 # КОНФИГУРАЦИЯ
 # ============================================================================
@@ -59,6 +62,9 @@ class Config:
     xray_zip: str = "Xray-linux-64.zip"
     xray_dir: str = "xray"
     xray_bin: str = "xray/xray"
+    
+    # GeoIP база
+    geoip_db: str = "geoip/GeoLite2-Country.mmdb"
 
 
 # ============================================================================
@@ -467,6 +473,41 @@ def clean_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
 
 
+# === НОВАЯ ФУНКЦИЯ ДЛЯ GEOIP ===
+def get_country_flag(ip_address: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
+    """
+    Определяет код страны и возвращает флаг-эмодзи для IP-адреса.
+    Если определить не удалось или это домен, возвращает '🌍'.
+    """
+    # Если это не IP-адрес (простая проверка), возвращаем глобус
+    if not re.match(r'^\d+\.\d+\.\d+\.\d+$', ip_address):
+        return "🌍"
+
+    try:
+        # Проверяем, существует ли файл базы данных
+        if not os.path.exists(db_path):
+            return "🌍"
+            
+        # Открываем базу данных
+        with geoip2.database.Reader(db_path) as reader:
+            response = reader.country(ip_address)
+            country_code = response.country.iso_code
+            if country_code:
+                # Преобразуем код страны в эмодзи-флаг
+                # Флаги строятся из двух букв, смещённых в юникоде
+                return chr(ord(country_code[0]) + 127397) + chr(ord(country_code[1]) + 127397)
+            else:
+                return "🌍"
+    except FileNotFoundError:
+        return "🌍"
+    except geoip2.errors.AddressNotFoundError:
+        # IP не найден в базе
+        return "🌍"
+    except Exception as e:
+        # Любая другая ошибка
+        return "🌍"
+
+
 # ============================================================================
 # ОСНОВНЫЕ ФУНКЦИИ
 # ============================================================================
@@ -743,7 +784,11 @@ def step4_generate_clash(config: Config) -> List[str]:
         seen.add(key)
         
         uuid_short = proxy.uuid[:8] if len(proxy.uuid) >= 8 else proxy.uuid
-        name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
+        # === ИЗМЕНЕНО: добавляем флаг к имени ===
+        flag = get_country_flag(proxy.server, config.geoip_db)
+        base_name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
+        name = f"{flag}{base_name}"
+        # ========================================
         
         clash_config = proxy.to_clash_config(name)
         
