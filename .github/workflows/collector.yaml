@@ -31,9 +31,21 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          for f in all_proxies.yaml ping.yaml traff.yaml clash.yaml; do
-            [ -f "$f" ] && [ -s "$f" ] && git add "$f"
+          # Сначала забираем изменения из удалённого репозитория
+          git pull --rebase origin main || true
+          
+          files_to_add=""
+          for f in all_proxies.yaml ping.yaml traff.yaml clash.yaml sources_stats.txt; do
+            if [ -f "$f" ] && [ -s "$f" ]; then
+              files_to_add="$files_to_add $f"
+            fi
           done
           
-          git commit -m "Update proxies $(date)" || exit 0
-          git push
+          if [ -n "$files_to_add" ]; then
+            git add $files_to_add
+            git commit -m "Update proxies $(date)" || exit 0
+            git push
+            echo "✅ Changes pushed"
+          else
+            echo "ℹ️ No files to commit"
+          fi
