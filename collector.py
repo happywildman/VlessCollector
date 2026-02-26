@@ -512,8 +512,8 @@ def step1_collect(config: Config) -> Tuple[List[str], Dict[str, SourceStats], Di
                     all_urls.append((url, source_url))
                     source_count += 1
             
-            source_stats[source_url].total_proxies = source_count
-            print(f"  ✅ Found {source_count} proxies")
+            # НЕ обновляем total_proxies здесь - сделаем это после фильтрации
+            print(f"  ✅ Found {source_count} proxies (before filtering)")
             
         except Exception as e:
             print(f"  ⚠️ Failed to fetch: {e}")
@@ -546,14 +546,23 @@ def step1_collect(config: Config) -> Tuple[List[str], Dict[str, SourceStats], Di
             if key not in seen:
                 seen.add(key)
                 all_proxies.append(proxy.to_yaml_line())
-                # Сохраняем соответствие URL -> source
                 url_to_source[url] = source_url
+    
+    # ТЕПЕРЬ обновляем total_proxies для каждого источника
+    # Сначала обнуляем
+    for src in source_stats:
+        source_stats[src].total_proxies = 0
+    
+    # Считаем только те, что прошли фильтр
+    for url, source_url in all_urls:
+        if url in url_to_source:  # если прокси прошёл фильтр
+            source_stats[source_url].total_proxies += 1
     
     all_proxies = all_proxies[:config.max_proxies]
     write_yaml(config.all_proxies_file, all_proxies)
     
     print(f"\n✅ Collection completed")
-    print(f"Found {len(all_proxies)} proxies")
+    print(f"Found {len(all_proxies)} proxies after filtering")
     
     return all_proxies, source_stats, url_to_source
 
