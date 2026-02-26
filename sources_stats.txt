@@ -2,28 +2,28 @@
 📊 СТАТИСТИКА ПО ИСТОЧНИКАМ ПРОКСИ
 ============================================================
 
-Дата: 2026-02-26 15:54:02
+Дата: 2026-02-26 16:35:49
 
 📌 https://raw.githubusercontent.com/VovaplusEXP/p-configs/main/Splitted-By-Protocol-Secure/vless.txt
    Total: 271
-   ✅ Ping passed: 0 (0.0%)
-   ⚡ Avg ping: 0ms
+   ✅ Ping passed: 1051 (387.8%)
+   ⚡ Avg ping: 143ms
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt
-   Total: 678
+   Total: 370
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS_mobile.txt
-   Total: 150
+   Total: 137
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS.txt
-   Total: 225
+   Total: 159
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
@@ -113,13 +113,13 @@
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_RAW.txt
-   Total: 71
+   Total: 70
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/V2RayRoot/V2RayConfig/refs/heads/main/Config/vless.txt
-   Total: 558
+   Total: 567
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
@@ -131,7 +131,7 @@
    🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/Kwinshadow/TelegramV2rayCollector/refs/heads/main/sublinks/mix.txt
-   Total: 59
+   Total: 76
    ✅ Ping passed: 0 (0.0%)
    ⚡ Avg ping: 0ms
    🚀 Traffic passed: 0
@@ -140,6 +140,6 @@
 ============================================================
 📈 ОБЩАЯ СТАТИСТИКА
 ============================================================
-Всего прокси: 14039
-✅ Прошли ping: 0 (0.0%)
+Всего прокси: 13677
+✅ Прошли ping: 1051 (7.7%)
 🚀 Прошли трафик: 0
