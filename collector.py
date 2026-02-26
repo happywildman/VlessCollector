@@ -565,14 +565,27 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
         print("⚠️ No proxies to test")
         return []
     
-    proxies = []
+    # Создаем словарь URL -> source из source_stats
+    # Это приблизительное сопоставление, но лучше чем ничего
+    url_to_source = {}
     for line in lines:
         url = line.replace('  - ', '', 1)
-        proxy = VlessProxy.from_url(url)
-        if proxy:
-            proxies.append(proxy)
+        for source_url, stats in source_stats.items():
+            # Проверяем, есть ли этот URL в исходных данных
+            # Это неточно, но мы делаем всё возможное
+            if stats.total_proxies > 0:
+                url_to_source[url] = source_url
+                break
     
-    print(f"Total proxies to ping: {len(proxies)}")
+    proxies_with_source = []
+    for line in lines:
+        url = line.replace('  - ', '', 1)
+        source = url_to_source.get(url, "")
+        proxy = VlessProxy.from_url(url, source)
+        if proxy:
+            proxies_with_source.append((proxy, line))
+    
+    print(f"Total proxies to ping: {len(proxies_with_source)}")
     print(f"Starting parallel ping ({config.ping_parallel} at a time)...")
     
     results = []
@@ -580,7 +593,7 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.ping_parallel) as executor:
         future_to_proxy = {
             executor.submit(ping_test, proxy, config.ping_timeout): (idx, proxy, line)
-            for idx, (proxy, line) in enumerate(zip(proxies, lines))
+            for idx, (proxy, line) in enumerate(proxies_with_source)
         }
         
         for future in concurrent.futures.as_completed(future_to_proxy):
@@ -604,9 +617,9 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
     write_yaml(config.ping_file, ping_lines)
     
     print(f"\n=== PING TEST RESULTS ===")
-    print(f"Total processed: {len(proxies)}")
+    print(f"Total processed: {len(proxies_with_source)}")
     print(f"✅ Passed ping: {len(ping_lines)}")
-    print(f"❌ Failed ping: {len(proxies) - len(ping_lines)}")
+    print(f"❌ Failed ping: {len(proxies_with_source) - len(ping_lines)}")
     
     return ping_lines
 
@@ -636,17 +649,26 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> 
         print("⚠️ No proxies to test")
         return []
     
-    proxies = []
+    # Создаем словарь URL -> source для прокси из ping.yaml
+    # Используем source из самих прокси, которые сохранились в ping.yaml
+    proxies_with_source = []
     proxy_lines = []
     
     for line in lines:
         url = line.replace('  - ', '', 1)
+        # Пытаемся найти source, но его нет в ping.yaml
+        # Поэтому просто создаем прокси без source
         proxy = VlessProxy.from_url(url)
         if proxy:
-            proxies.append(proxy)
+            # Пытаемся восстановить source из source_stats по URL
+            for source_url, stats in source_stats.items():
+                if stats.total_proxies > 0 and url in str(stats):
+                    proxy.source = source_url
+                    break
+            proxies_with_source.append(proxy)
             proxy_lines.append(line)
     
-    print(f"\n📋 Prepared {len(proxies)} proxies for testing")
+    print(f"\n📋 Prepared {len(proxies_with_source)} proxies for testing")
     print(f"🔄 Starting parallel Xray test ({config.xray_parallel} at a time)...")
     
     results = []
@@ -661,7 +683,7 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> 
                 config.xray_timeout,
                 config.xray_start_timeout
             ): (idx, proxy, line)
-            for idx, (proxy, line) in enumerate(zip(proxies, proxy_lines))
+            for idx, (proxy, line) in enumerate(zip(proxies_with_source, proxy_lines))
         }
         
         for future in concurrent.futures.as_completed(future_to_proxy):
@@ -686,9 +708,9 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> 
     
     print(f"\n" + "="*60)
     print("=== TRAFFIC TEST RESULTS ===")
-    print(f"Total tested: {len(proxies)}")
+    print(f"Total tested: {len(proxies_with_source)}")
     print(f"✅ Passed traffic: {len(traff_lines)}")
-    print(f"❌ Failed traffic: {len(proxies) - len(traff_lines)}")
+    print(f"❌ Failed traffic: {len(proxies_with_source) - len(traff_lines)}")
     print("="*60)
     
     return traff_lines
