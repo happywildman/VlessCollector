@@ -153,7 +153,7 @@ jobs:
           
           rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
 
-      - name: Traffic test with Xray - create traff.yaml
+            - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
           echo "Starting TRAFFIC TEST with Xray at $(date)"
@@ -164,7 +164,7 @@ jobs:
           
           ./xray/xray version || echo "⚠️ Xray version check failed"
           
-          # Исправлено: полная поддержка REALITY (pbk, sid, fp)
+          # Исправлено: добавлено "encryption": "none" для каждого пользователя VLESS
           echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
           echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
           echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
@@ -183,7 +183,8 @@ jobs:
           echo '    pbk = params.get("pbk", "")' >> /tmp/gen_xray_config.py
           echo '    sid = params.get("sid", params.get("shortId", ""))' >> /tmp/gen_xray_config.py
           echo '    fp = params.get("fp", "chrome")' >> /tmp/gen_xray_config.py
-          echo '    user = {"id": uuid}' >> /tmp/gen_xray_config.py
+          echo '    # Исправлено: добавлено "encryption": "none"' >> /tmp/gen_xray_config.py
+          echo '    user = {"id": uuid, "encryption": "none"}' >> /tmp/gen_xray_config.py
           echo '    if flow and security != "reality": user["flow"] = flow' >> /tmp/gen_xray_config.py
           echo '    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}' >> /tmp/gen_xray_config.py
           echo '    stream_settings = {"network": network, "security": security}' >> /tmp/gen_xray_config.py
