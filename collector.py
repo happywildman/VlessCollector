@@ -602,7 +602,10 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
                 success, ping_time = future.result()
                 
                 if proxy.source and proxy.source in source_stats:
-                    source_stats[proxy.source].add_ping_result(success, ping_time)
+    # Проверяем, не добавляли ли мы уже этот прокси
+    if not hasattr(proxy, '_ping_added'):
+        source_stats[proxy.source].add_ping_result(success, ping_time)
+        proxy._ping_added = True
                 
                 if success:
                     print(f"✅ {proxy.server}:{proxy.port} - {ping_time:.0f}ms")
