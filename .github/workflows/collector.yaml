@@ -1,0 +1,48 @@
+name: Collect Proxies
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch: ~
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          pip3 install pyyaml -q
+
+      - name: Run collector
+        run: |
+          python3 collector.py
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          files_to_add=""
+          for f in all_proxies.yaml ping.yaml traff.yaml clash.yaml; do
+            if [ -f "$f" ] && [ -s "$f" ]; then
+              files_to_add="$files_to_add $f"
+            fi
+          done
+          
+          if [ -n "$files_to_add" ]; then
+            git add $files_to_add
+            git commit -m "Update proxies $(date)" || exit 0
+            git push
+            echo "✅ Changes pushed"
+          else
+            echo "ℹ️ No files to commit"
+          fi
