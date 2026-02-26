@@ -88,17 +88,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y netcat-openbsd
           
-          is_valid_server() {
-            local server="$1"
-            if echo "$server" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null; then
-              return 0
-            fi
-            if echo "$server" | grep -E '^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' > /dev/null; then
-              return 0
-            fi
-            return 1
-          }
-          
           echo "proxies:" > ping.yaml
           > /tmp/ping_servers.txt
           > /tmp/ping_ports.txt
@@ -121,10 +110,6 @@ jobs:
               continue
             fi
             
-            if ! is_valid_server "$server"; then
-              continue
-            fi
-            
             total=$((total + 1))
             
             echo "$server" >> /tmp/ping_servers.txt
@@ -142,7 +127,8 @@ jobs:
             local port=$(sed -n "${idx}p" /tmp/ping_ports.txt)
             local line=$(sed -n "${idx}p" /tmp/ping_lines.txt)
             
-            if timeout 2 nc -zv "$server" "$port" 2>&1 | grep -qE "succeeded|open|Connected"; then
+            # ИСПРАВЛЕНО: Проверяем exit code nc, а не вывод текста
+            if timeout 2 bash -c "echo >/dev/tcp/$server/$port" 2>/dev/null; then
               echo "$line" >> /tmp/ping_passed.txt
               echo "✅ $server:$port - alive"
             else
@@ -179,13 +165,7 @@ jobs:
           unzip -q Xray-linux-64.zip -d xray/
           chmod +x xray/xray
           
-          urldecode() {
-            local data="$1"
-            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
-            echo "$decoded"
-          }
-          
-          # ИСПРАВЛЕНО: Создаём Python-скрипт через echo (БЕЗ heredoc!)
+          # ИСПРАВЛЕНО: Python-скрипт через echo (без heredoc)
           echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
           echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
           echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
@@ -203,8 +183,8 @@ jobs:
           echo '    path = params.get("path", "")' >> /tmp/gen_xray_config.py
           echo '    user = {"id": uuid}' >> /tmp/gen_xray_config.py
           echo '    if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
-          echo '    config = {"log": {"loglevel": "none"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth"}}], "outbounds": [{"protocol": "vless", "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]}, "streamSettings": {"network": network, "security": security}}]}' >> /tmp/gen_xray_config.py
-          echo '    if security != "none": config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": False}' >> /tmp/gen_xray_config.py
+          echo '    config = {"log": {"loglevel": "warning"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth"}}], "outbounds": [{"protocol": "vless", "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]}, "streamSettings": {"network": network, "security": security}}]}' >> /tmp/gen_xray_config.py
+          echo '    if security != "none": config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
           echo '    if network == "ws":' >> /tmp/gen_xray_config.py
           echo '        ws = {"path": path} if path else {}' >> /tmp/gen_xray_config.py
           echo '        if host: ws["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
@@ -220,6 +200,7 @@ jobs:
           > /tmp/xray_queue.txt
           
           total=0
+          failed_configs=0
           
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" ]] && continue
@@ -228,18 +209,24 @@ jobs:
             url="${line#  - }"
             total=$((total + 1))
             
-            # Уникальный порт для каждого теста (избегаем конфликтов)
             local_port=$((10000 + total))
-            
             config_file="/tmp/xray_config_${total}.json"
+            log_file="/tmp/xray_log_${total}.txt"
             
-            python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file"
+            python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file" 2>"$log_file"
+            
+            # Проверка что конфиг валидный JSON
+            if ! jq -e '.' "$config_file" >/dev/null 2>&1; then
+              echo "⚠️ Invalid config for proxy #$total" >&2
+              failed_configs=$((failed_configs + 1))
+              continue
+            fi
             
             echo "$total|$local_port|$config_file|$line" >> /tmp/xray_queue.txt
             
           done < ping.yaml
           
-          echo "Total proxies for traffic test: $total"
+          echo "Total proxies for traffic test: $total (valid configs: $((total - failed_configs)))"
           echo "Starting parallel Xray test (5 at a time)..."
           
           test_xray_proxy() {
@@ -249,29 +236,42 @@ jobs:
             local config_file=$(echo "$item" | cut -d'|' -f3)
             local line=$(echo "$item" | cut -d'|' -f4-)
             
-            ./xray/xray -config "$config_file" > /dev/null 2>&1 &
+            # Запускаем Xray с логированием
+            ./xray/xray -config "$config_file" > "/tmp/xray_run_${idx}.log" 2>&1 &
             XRAY_PID=$!
             
-            for i in {1..10}; do
-              if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then break; fi
+            # Ждём запуска (проверяем что процесс жив и порт открыт)
+            local port_ready=0
+            for i in {1..15}; do
+              if ! kill -0 $XRAY_PID 2>/dev/null; then
+                echo "❌ Proxy $idx - Xray died" >&2
+                break
+              fi
+              if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then
+                port_ready=1
+                break
+              fi
               sleep 0.3
             done
             
-            http_code=$(curl -s -o /dev/null -w "%{http_code}" \
-              --socks5-hostname 127.0.0.1:"$local_port" \
-              --connect-timeout 2 --max-time 3 \
-              "http://www.gstatic.com/generate_204" 2>/dev/null) || http_code="000"
+            if [[ $port_ready -eq 1 ]]; then
+              # Тест через SOCKS5
+              http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+                --socks5-hostname 127.0.0.1:"$local_port" \
+                --connect-timeout 2 --max-time 3 \
+                "http://www.gstatic.com/generate_204" 2>/dev/null) || http_code="000"
+              
+              if [[ "$http_code" == "204" ]]; then
+                echo "$line" >> "/tmp/xray_results/passed_${idx}.txt"
+                echo "✅ Proxy $idx - passed (HTTP $http_code)"
+              else
+                echo "❌ Proxy $idx - failed (HTTP $http_code)"
+              fi
+            fi
             
             kill $XRAY_PID 2>/dev/null || true
             wait $XRAY_PID 2>/dev/null || true
-            rm -f "$config_file"
-            
-            if [[ "$http_code" == "204" ]]; then
-              echo "$line" >> "/tmp/xray_results/passed_${idx}.txt"
-              echo "✅ Proxy $idx - passed"
-            else
-              echo "❌ Proxy $idx - failed (HTTP $http_code)"
-            fi
+            rm -f "$config_file" "/tmp/xray_run_${idx}.log"
           }
           
           export -f test_xray_proxy
