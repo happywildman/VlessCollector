@@ -164,6 +164,7 @@ jobs:
           
           ./xray/xray version || echo "⚠️ Xray version check failed"
           
+          # Исправлено: полная поддержка REALITY (pbk, sid, fp)
           echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
           echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
           echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
@@ -175,23 +176,33 @@ jobs:
           echo '    params = dict(urllib.parse.parse_qsl(parsed.query))' >> /tmp/gen_xray_config.py
           echo '    network = params.get("type", "tcp")' >> /tmp/gen_xray_config.py
           echo '    security = params.get("security", "none")' >> /tmp/gen_xray_config.py
-          echo '    sni = params.get("sni", server if security in ["tls", "reality"] else "")' >> /tmp/gen_xray_config.py
+          echo '    sni = params.get("sni", server)' >> /tmp/gen_xray_config.py
           echo '    flow = params.get("flow", "")' >> /tmp/gen_xray_config.py
           echo '    host = params.get("host", "")' >> /tmp/gen_xray_config.py
           echo '    path = params.get("path", "")' >> /tmp/gen_xray_config.py
+          echo '    pbk = params.get("pbk", "")' >> /tmp/gen_xray_config.py
+          echo '    sid = params.get("sid", params.get("shortId", ""))' >> /tmp/gen_xray_config.py
+          echo '    fp = params.get("fp", "chrome")' >> /tmp/gen_xray_config.py
           echo '    user = {"id": uuid}' >> /tmp/gen_xray_config.py
-          echo '    if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
+          echo '    if flow and security != "reality": user["flow"] = flow' >> /tmp/gen_xray_config.py
           echo '    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}' >> /tmp/gen_xray_config.py
           echo '    stream_settings = {"network": network, "security": security}' >> /tmp/gen_xray_config.py
           echo '    if security == "tls":' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["tlsSettings"] = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
           echo '    elif security == "reality":' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["realitySettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
+          echo '        reality_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
+          echo '        if pbk: reality_settings["publicKey"] = pbk' >> /tmp/gen_xray_config.py
+          echo '        if sid: reality_settings["shortId"] = sid' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["realitySettings"] = reality_settings' >> /tmp/gen_xray_config.py
           echo '    if network == "ws" and (path or host):' >> /tmp/gen_xray_config.py
           echo '        ws_settings = {}' >> /tmp/gen_xray_config.py
           echo '        if path: ws_settings["path"] = path' >> /tmp/gen_xray_config.py
           echo '        if host: ws_settings["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
           echo '        stream_settings["wsSettings"] = ws_settings' >> /tmp/gen_xray_config.py
+          echo '    elif network == "grpc":' >> /tmp/gen_xray_config.py
+          echo '        grpc_settings = {}' >> /tmp/gen_xray_config.py
+          echo '        if params.get("serviceName"): grpc_settings["serviceName"] = params.get("serviceName")' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["grpcSettings"] = grpc_settings' >> /tmp/gen_xray_config.py
           echo '    config = {"log": {"loglevel": "warning"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}], "outbounds": [{"protocol": "vless", "settings": outbound_settings, "streamSettings": stream_settings}]}' >> /tmp/gen_xray_config.py
           echo '    print(json.dumps(config, indent=2))' >> /tmp/gen_xray_config.py
           echo 'except Exception as e:' >> /tmp/gen_xray_config.py
