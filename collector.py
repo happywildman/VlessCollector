@@ -2,7 +2,7 @@
 """
 VLESS Proxy Collector
 Собирает прокси из подписок, тестирует ping и трафик через Xray,
-сохраняет TOP 100 в формате Clash
+сохраняет TOP 100 в формате Clash + статистика по источникам
 """
 
 import os
@@ -35,20 +35,21 @@ class Config:
     ping_file: str = "ping.yaml"
     traff_file: str = "traff.yaml"
     clash_file: str = "clash.yaml"
+    stats_file: str = "sources_stats.txt"
     
     # Параметры тестирования
     ping_timeout: int = 2
     ping_parallel: int = 50
     
-    xray_timeout: int = 5
-    xray_connect_timeout: int = 5
-    xray_parallel: int = 5
-    xray_start_timeout: int = 3
+    xray_timeout: int = 4
+    xray_connect_timeout: int = 4
+    xray_parallel: int = 3  # Уменьшено до 3
+    xray_start_timeout: int = 2  # Уменьшено до 2
     
     # Фильтры
-    ping_threshold: int = 500  # мс, отсев медленных
-    max_proxies: int = 10000    # максимум для сбора
-    top_count: int = 100        # сколько оставить в итоге
+    ping_threshold: int = 500
+    max_proxies: int = 10000
+    top_count: int = 100
     
     # URLs для тестов
     test_url: str = "http://www.gstatic.com/generate_204"
@@ -71,6 +72,7 @@ class VlessProxy:
     uuid: str
     server: str
     port: int
+    source: str = ""
     network: str = "tcp"
     host: str = ""
     path: str = ""
@@ -85,19 +87,16 @@ class VlessProxy:
     authority: str = ""
     
     @classmethod
-    def from_url(cls, url: str) -> Optional['VlessProxy']:
+    def from_url(cls, url: str, source: str = "") -> Optional['VlessProxy']:
         """Создать объект из vless:// URL"""
         try:
-            # Убираем пробелы и кавычки
             url = url.strip().strip('"\'')
             
             if not url.startswith('vless://'):
                 return None
             
-            # Парсим URL
             parsed = urllib.parse.urlparse(url.replace('vless://', 'http://'))
             
-            # Разбираем auth и server:port
             if '@' not in parsed.netloc:
                 return None
                 
@@ -113,18 +112,15 @@ class VlessProxy:
             except ValueError:
                 return None
             
-            # UUID может быть URL-encoded
             uuid = urllib.parse.unquote(auth)
-            
-            # Парсим query параметры
             params = dict(urllib.parse.parse_qsl(parsed.query))
             
-            # Создаём объект
             proxy = cls(
                 raw_url=url,
                 uuid=uuid,
                 server=server,
                 port=port,
+                source=source,
                 network=params.get('type', 'tcp'),
                 host=params.get('host', ''),
                 path=params.get('path', ''),
@@ -139,7 +135,6 @@ class VlessProxy:
                 authority=params.get('authority', '')
             )
             
-            # Если sni не указан, но есть tls/reality, используем server
             if not proxy.sni and proxy.security in ['tls', 'reality']:
                 proxy.sni = proxy.server
             
@@ -174,15 +169,12 @@ class VlessProxy:
             "udp": True,
         }
         
-        # Добавляем sni для TLS/Reality
         if self.security in ['tls', 'reality'] and self.sni:
             config["sni"] = self.sni
         
-        # Добавляем flow если есть
         if self.flow:
             config["flow"] = self.flow
         
-        # Добавляем WebSocket параметры
         if self.network == "ws" and (self.path or self.host):
             ws_opts = {}
             if self.path:
@@ -196,12 +188,10 @@ class VlessProxy:
     def to_xray_config(self, local_port: int) -> Dict[str, Any]:
         """Сгенерировать конфиг для Xray"""
         
-        # Настройки пользователя
         user = {"id": self.uuid, "encryption": "none"}
         if self.flow:
             user["flow"] = self.flow
         
-        # Outbound settings
         outbound_settings = {
             "vnext": [{
                 "address": self.server,
@@ -210,13 +200,11 @@ class VlessProxy:
             }]
         }
         
-        # Stream settings
         stream_settings = {
             "network": self.network,
             "security": self.security
         }
         
-        # TLS settings
         if self.security == "tls":
             tls_settings = {
                 "serverName": self.sni or self.server,
@@ -227,7 +215,6 @@ class VlessProxy:
                 tls_settings["alpn"] = [a.strip() for a in self.alpn.split(",")]
             stream_settings["tlsSettings"] = tls_settings
         
-        # Reality settings
         elif self.security == "reality":
             reality_settings = {
                 "serverName": self.sni or self.server,
@@ -240,7 +227,6 @@ class VlessProxy:
                 reality_settings["shortId"] = self.sid
             stream_settings["realitySettings"] = reality_settings
         
-        # WebSocket settings
         if self.network == "ws" and (self.path or self.host):
             ws_settings = {}
             if self.path:
@@ -249,7 +235,6 @@ class VlessProxy:
                 ws_settings["headers"] = {"Host": self.host}
             stream_settings["wsSettings"] = ws_settings
         
-        # gRPC settings
         elif self.network == "grpc":
             grpc_settings = {}
             if self.service_name:
@@ -258,7 +243,6 @@ class VlessProxy:
                 grpc_settings["authority"] = self.authority
             stream_settings["grpcSettings"] = grpc_settings
         
-        # Полный конфиг
         config = {
             "log": {"loglevel": "warning"},
             "inbounds": [{
@@ -285,6 +269,39 @@ class ProxyTestResult:
     traffic_time: Optional[float] = None
     ping_success: bool = False
     traffic_success: bool = False
+
+
+@dataclass
+class SourceStats:
+    """Статистика по источнику"""
+    url: str
+    total_proxies: int = 0
+    ping_passed: int = 0
+    traffic_passed: int = 0
+    ping_times: List[float] = None
+    
+    def __post_init__(self):
+        if self.ping_times is None:
+            self.ping_times = []
+    
+    def add_ping_result(self, success: bool, time_ms: float):
+        if success:
+            self.ping_passed += 1
+            self.ping_times.append(time_ms)
+    
+    def add_traffic_result(self, success: bool):
+        if success:
+            self.traffic_passed += 1
+    
+    def to_string(self) -> str:
+        avg_ping = sum(self.ping_times) / len(self.ping_times) if self.ping_times else 0
+        return (
+            f"📌 {self.url}\n"
+            f"   Total: {self.total_proxies}\n"
+            f"   ✅ Ping passed: {self.ping_passed} ({self.ping_passed/self.total_proxies*100:.1f}%)\n"
+            f"   ⚡ Avg ping: {avg_ping:.0f}ms\n"
+            f"   🚀 Traffic passed: {self.traffic_passed}\n"
+        )
 
 
 # ============================================================================
@@ -349,14 +366,13 @@ def ping_test(proxy: VlessProxy, timeout: int = 2) -> Tuple[bool, float]:
     try:
         start = time.time_ns()
         
-        # Пробуем открыть TCP соединение
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         result = sock.connect_ex((proxy.server, proxy.port))
         sock.close()
         
         end = time.time_ns()
-        duration = (end - start) / 1_000_000  # в миллисекундах
+        duration = (end - start) / 1_000_000
         
         return result == 0, duration
         
@@ -365,32 +381,44 @@ def ping_test(proxy: VlessProxy, timeout: int = 2) -> Tuple[bool, float]:
 
 
 def test_proxy_with_xray(proxy: VlessProxy, xray_path: str, 
-                         test_url: str, timeout: int = 5,
-                         start_timeout: int = 3) -> Tuple[bool, float]:
+                         test_url: str, timeout: int = 4,
+                         start_timeout: int = 2) -> Tuple[bool, float]:
     """
-    Проверить прокси через Xray
-    Возвращает (успех, время в мс)
+    Проверить прокси через Xray с гарантированным завершением
     """
-    local_port = 1080  # Используем стандартный порт
+    local_port = 1080
     config_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
     
     try:
-        # Генерируем конфиг
         config = proxy.to_xray_config(local_port)
         json.dump(config, config_file, indent=2)
         config_file.close()
         
-        # Запускаем Xray
         process = subprocess.Popen(
             [xray_path, '-config', config_file.name],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
         
-        # Ждём запуска
-        time.sleep(start_timeout)
+        port_ready = False
+        for i in range(15):
+            time.sleep(0.2)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            result = sock.connect_ex(('127.0.0.1', local_port))
+            sock.close()
+            if result == 0:
+                port_ready = True
+                break
         
-        # Проверяем через curl (используем subprocess)
+        if not port_ready:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except:
+                process.kill()
+            return False, 0
+        
         start = time.time_ns()
         
         curl_cmd = [
@@ -401,15 +429,20 @@ def test_proxy_with_xray(proxy: VlessProxy, xray_path: str,
             test_url
         ]
         
-        result = subprocess.run(curl_cmd, capture_output=True, text=True)
-        http_code = result.stdout.strip()
+        try:
+            result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=timeout+3)
+            http_code = result.stdout.strip()
+        except subprocess.TimeoutExpired:
+            http_code = "TIMEOUT"
         
         end = time.time_ns()
-        duration = (end - start) / 1_000_000  # миллисекунды
+        duration = (end - start) / 1_000_000
         
-        # Останавливаем Xray
         process.terminate()
-        process.wait(timeout=2)
+        try:
+            process.wait(timeout=2)
+        except:
+            process.kill()
         
         return http_code == '204', duration
         
@@ -418,7 +451,6 @@ def test_proxy_with_xray(proxy: VlessProxy, xray_path: str,
         return False, 0
         
     finally:
-        # Чистим файлы
         try:
             os.unlink(config_file.name)
         except:
@@ -439,10 +471,9 @@ def clean_name(name: str) -> str:
 # ОСНОВНЫЕ ФУНКЦИИ
 # ============================================================================
 
-def step1_collect(config: Config) -> List[str]:
+def step1_collect(config: Config) -> Tuple[List[str], Dict[str, SourceStats]]:
     """
     ШАГ 1: Сбор прокси из подписок
-    Возвращает список строк для all_proxies.yaml
     """
     print("\n" + "="*60)
     print("ШАГ 1: Сбор прокси из подписок")
@@ -458,11 +489,13 @@ def step1_collect(config: Config) -> List[str]:
     all_urls = []
     all_proxies = []
     seen = set()
+    source_stats = {}
     
     for idx, source_url in enumerate(sources, 1):
         print(f"[{idx}/{len(sources)}] Processing: {source_url}")
         
-        # Скачиваем подписку
+        source_stats[source_url] = SourceStats(url=source_url)
+        
         try:
             req = urllib.request.Request(
                 source_url,
@@ -471,14 +504,15 @@ def step1_collect(config: Config) -> List[str]:
             with urllib.request.urlopen(req, timeout=10) as response:
                 content = response.read().decode('utf-8', errors='ignore')
                 
-            # Разделяем строки
+            source_count = 0
             for line in content.splitlines():
-                # Ищем vless:// ссылки
                 for match in re.finditer(r'vless://[^\s]+', line):
                     url = match.group(0)
-                    all_urls.append(url)
-                    
-            print(f"  ✅ Done")
+                    all_urls.append((url, source_url))
+                    source_count += 1
+            
+            source_stats[source_url].total_proxies = source_count
+            print(f"  ✅ Found {source_count} proxies")
             
         except Exception as e:
             print(f"  ⚠️ Failed to fetch: {e}")
@@ -486,9 +520,7 @@ def step1_collect(config: Config) -> List[str]:
     
     print(f"\nProcessing collected data...")
     
-    # Фильтруем и сортируем
-    for url in all_urls:
-        # Базовые фильтры
+    for url, source_url in all_urls:
         if '%25' in url:
             continue
         if not re.match(r'vless://[^@]+@[^:]+:\d+', url):
@@ -504,42 +536,35 @@ def step1_collect(config: Config) -> List[str]:
         if len(url) < 40 or len(url) > 1200:
             continue
         
-        # Декодируем и проверяем
-        proxy = VlessProxy.from_url(url)
+        proxy = VlessProxy.from_url(url, source_url)
         if proxy and proxy.is_valid():
             key = f"{proxy.server}:{proxy.port}:{proxy.uuid}"
             if key not in seen:
                 seen.add(key)
                 all_proxies.append(proxy.to_yaml_line())
     
-    # Ограничиваем количество
     all_proxies = all_proxies[:config.max_proxies]
-    
-    # Сохраняем
     write_yaml(config.all_proxies_file, all_proxies)
     
     print(f"\n✅ Collection completed")
     print(f"Found {len(all_proxies)} proxies")
     
-    return all_proxies
+    return all_proxies, source_stats
 
 
-def step2_ping_test(config: Config) -> List[str]:
+def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> List[str]:
     """
     ШАГ 2: Ping-тест
-    Возвращает список строк для ping.yaml
     """
     print("\n" + "="*60)
     print("ШАГ 2: Ping-тест")
     print("="*60)
     
-    # Читаем прокси
     lines = read_yaml_proxies(config.all_proxies_file)
     if not lines:
         print("⚠️ No proxies to test")
         return []
     
-    # Парсим в объекты
     proxies = []
     for line in lines:
         url = line.replace('  - ', '', 1)
@@ -552,7 +577,6 @@ def step2_ping_test(config: Config) -> List[str]:
     
     results = []
     
-    # Параллельный пинг
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.ping_parallel) as executor:
         future_to_proxy = {
             executor.submit(ping_test, proxy, config.ping_timeout): (idx, proxy, line)
@@ -563,6 +587,10 @@ def step2_ping_test(config: Config) -> List[str]:
             idx, proxy, line = future_to_proxy[future]
             try:
                 success, ping_time = future.result()
+                
+                if proxy.source and proxy.source in source_stats:
+                    source_stats[proxy.source].add_ping_result(success, ping_time)
+                
                 if success:
                     print(f"✅ {proxy.server}:{proxy.port} - {ping_time:.0f}ms")
                     results.append((ping_time, line))
@@ -571,10 +599,7 @@ def step2_ping_test(config: Config) -> List[str]:
             except Exception as e:
                 print(f"❌ {proxy.server}:{proxy.port} - error: {e}")
     
-    # Сортируем по времени пинга
     results.sort(key=lambda x: x[0])
-    
-    # Сохраняем
     ping_lines = [line for _, line in results]
     write_yaml(config.ping_file, ping_lines)
     
@@ -586,16 +611,14 @@ def step2_ping_test(config: Config) -> List[str]:
     return ping_lines
 
 
-def step3_traffic_test(config: Config) -> List[str]:
+def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> List[str]:
     """
     ШАГ 3: Трафик-тест через Xray + замер времени
-    Возвращает список строк для traff.yaml (уже отсортированных по скорости)
     """
     print("\n" + "="*60)
     print("ШАГ 3: Трафик-тест через Xray")
     print("="*60)
     
-    # Скачиваем Xray если нужно
     if not os.path.exists(config.xray_bin):
         print("Downloading Xray...")
         if not download_file(config.xray_url, config.xray_zip):
@@ -608,19 +631,11 @@ def step3_traffic_test(config: Config) -> List[str]:
         os.chmod(config.xray_bin, 0o755)
         print("✅ Xray downloaded")
     
-    # Проверяем Xray
-    try:
-        subprocess.run([config.xray_bin, 'version'], capture_output=True)
-    except:
-        print("❌ Xray check failed")
-    
-    # Читаем прокси из ping.yaml
     lines = read_yaml_proxies(config.ping_file)
     if not lines:
         print("⚠️ No proxies to test")
         return []
     
-    # Парсим и фильтруем по пингу (опционально)
     proxies = []
     proxy_lines = []
     
@@ -636,7 +651,6 @@ def step3_traffic_test(config: Config) -> List[str]:
     
     results = []
     
-    # Параллельный тест через Xray
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.xray_parallel) as executor:
         future_to_proxy = {
             executor.submit(
@@ -654,6 +668,10 @@ def step3_traffic_test(config: Config) -> List[str]:
             idx, proxy, line = future_to_proxy[future]
             try:
                 success, duration = future.result()
+                
+                if proxy.source and proxy.source in source_stats:
+                    source_stats[proxy.source].add_traffic_result(success)
+                
                 if success:
                     print(f"✅ {proxy.server}:{proxy.port} - {duration:.0f}ms")
                     results.append((duration, line))
@@ -662,10 +680,7 @@ def step3_traffic_test(config: Config) -> List[str]:
             except Exception as e:
                 print(f"❌ {proxy.server}:{proxy.port} - error: {e}")
     
-    # Сортируем по скорости (быстрые первые)
     results.sort(key=lambda x: x[0])
-    
-    # Сохраняем отсортированными
     traff_lines = [line for _, line in results]
     write_yaml(config.traff_file, traff_lines)
     
@@ -682,23 +697,18 @@ def step3_traffic_test(config: Config) -> List[str]:
 def step4_generate_clash(config: Config) -> List[str]:
     """
     ШАГ 4: Генерация TOP 100 для Clash
-    Берёт первые TOP_COUNT из traff.yaml (уже отсортированы по скорости)
     """
     print("\n" + "="*60)
     print("ШАГ 4: Генерация TOP 100 для Clash")
     print("="*60)
     
-    # Читаем отсортированные прокси
     lines = read_yaml_proxies(config.traff_file)
     if not lines:
         print("⚠️ No proxies to generate")
         write_yaml(config.clash_file, [])
         return []
     
-    # Берём первые TOP_COUNT
     top_lines = lines[:config.top_count]
-    
-    # Генерируем clash.yaml
     clash_lines = []
     seen = set()
     
@@ -709,20 +719,16 @@ def step4_generate_clash(config: Config) -> List[str]:
         if not proxy:
             continue
         
-        # Проверяем уникальность
         key = f"{proxy.server}:{proxy.port}:{proxy.uuid}"
         if key in seen:
             continue
         seen.add(key)
         
-        # Генерируем имя
         uuid_short = proxy.uuid[:8] if len(proxy.uuid) >= 8 else proxy.uuid
         name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
         
-        # Получаем конфиг для Clash
         clash_config = proxy.to_clash_config(name)
         
-        # Формируем YAML строки
         clash_lines.append(f"  - name: \"{clash_config['name']}\"")
         clash_lines.append(f"    type: {clash_config['type']}")
         clash_lines.append(f"    server: \"{clash_config['server']}\"")
@@ -747,9 +753,8 @@ def step4_generate_clash(config: Config) -> List[str]:
                 clash_lines.append(f"      headers:")
                 clash_lines.append(f"        Host: \"{ws['headers']['Host']}\"")
         
-        clash_lines.append("")  # пустая строка между прокси
+        clash_lines.append("")
     
-    # Сохраняем с заголовком
     with open(config.clash_file, 'w', encoding='utf-8') as f:
         f.write("proxies:\n")
         for line in clash_lines:
@@ -764,6 +769,43 @@ def step4_generate_clash(config: Config) -> List[str]:
     return clash_lines
 
 
+def save_source_stats(config: Config, source_stats: Dict[str, SourceStats]):
+    """Сохранить статистику по источникам в файл"""
+    print("\n" + "="*60)
+    print("📊 СОХРАНЕНИЕ СТАТИСТИКИ ПО ИСТОЧНИКАМ")
+    print("="*60)
+    
+    with open(config.stats_file, 'w', encoding='utf-8') as f:
+        f.write("="*60 + "\n")
+        f.write("📊 СТАТИСТИКА ПО ИСТОЧНИКАМ ПРОКСИ\n")
+        f.write("="*60 + "\n\n")
+        f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        
+        sorted_sources = sorted(
+            source_stats.items(),
+            key=lambda x: (x[1].traffic_passed, x[1].ping_passed),
+            reverse=True
+        )
+        
+        for source_url, stats in sorted_sources:
+            if stats.total_proxies > 0:
+                f.write(stats.to_string())
+                f.write("-"*40 + "\n")
+        
+        total_proxies = sum(s.total_proxies for s in source_stats.values())
+        total_ping = sum(s.ping_passed for s in source_stats.values())
+        total_traffic = sum(s.traffic_passed for s in source_stats.values())
+        
+        f.write("\n" + "="*60 + "\n")
+        f.write("📈 ОБЩАЯ СТАТИСТИКА\n")
+        f.write("="*60 + "\n")
+        f.write(f"Всего прокси: {total_proxies}\n")
+        f.write(f"✅ Прошли ping: {total_ping} ({total_ping/total_proxies*100:.1f}%)\n")
+        f.write(f"🚀 Прошли трафик: {total_traffic}\n")
+    
+    print(f"✅ Статистика сохранена в {config.stats_file}")
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -776,17 +818,11 @@ def main():
     
     config = Config()
     
-    # ШАГ 1: Сбор
-    step1_collect(config)
-    
-    # ШАГ 2: Ping-тест
-    step2_ping_test(config)
-    
-    # ШАГ 3: Трафик-тест через Xray
-    step3_traffic_test(config)
-    
-    # ШАГ 4: Генерация TOP 100
+    all_proxies, source_stats = step1_collect(config)
+    step2_ping_test(config, source_stats)
+    step3_traffic_test(config, source_stats)
     step4_generate_clash(config)
+    save_source_stats(config, source_stats)
     
     print("\n" + "="*60)
     print("✅ ALL DONE!")
