@@ -1,171 +1,17 @@
-name: Collect Proxies
-
-on:
-  schedule:
-    - cron: '0 */2 * * *'
-  workflow_dispatch: ~
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq python3 python3-pip netcat-openbsd
-          pip3 install pyyaml -q
-
-      - name: Collect and Strict Clean Vless
-        run: |
-          set -e
-          echo "Starting collection at $(date)"
-
-          SOURCE_FILE="VlessLinks.txt"
-
-          if [ ! -f "$SOURCE_FILE" ]; then
-            echo "VlessLinks.txt not found"
-            exit 1
-          fi
-
-          rm -f all_proxies.yaml temp.txt
-
-          echo "proxies:" > all_proxies.yaml
-
-          count=0
-          total_urls=$(grep -v '^#' "$SOURCE_FILE" | grep -v '^$' | wc -l)
-          echo "Found $total_urls URLs to process"
-
-          while IFS= read -r url || [ -n "$url" ]; do
-            clean_url=$(echo "$url" | tr -d '\r' | tr -d '"' | xargs)
-            [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
-            
-            count=$((count + 1))
-            echo "[$count/$total_urls] Processing: $clean_url"
-            
-            curl -fsSL --max-time 10 --max-filesize 1M "$clean_url" >> temp.txt 2>/dev/null || {
-              echo "  ⚠️ Failed to fetch or too large"
-              continue
-            }
-            echo "" >> temp.txt
-            echo "  ✅ Done"
-          done < "$SOURCE_FILE"
-
-          echo "Processing collected data..."
-          sed -i 's/vless:/\nvless:/g' temp.txt
-
-          grep -oE 'vless://[^[:space:]]+' temp.txt \
-            | grep -v "%25" \
-            | grep -E 'vless://[^@]+@[^:]+:[0-9]+' \
-            | grep -v "127.0.0.1" \
-            | grep -v "🔒" \
-            | grep -v "tls" \
-            | grep -v " " \
-            | awk 'length($0) > 40 && length($0) < 1200' \
-            | sort -u \
-            | head -n 10000 \
-            | sed 's/^/  - /' >> all_proxies.yaml || true
-
-          rm -f temp.txt
-          
-          echo "Collection completed at $(date)"
-          
-          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || true
-          total_proxies=${total_proxies:-0}
-          echo "Found $total_proxies proxies"
-
-      - name: Ping test - create ping.yaml
-        run: |
-          set -e
-          echo "Starting PING TEST at $(date)"
-          
-          sudo apt-get update
-          sudo apt-get install -y netcat-openbsd
-          
-          echo "proxies:" > ping.yaml
-          > /tmp/ping_servers.txt
-          > /tmp/ping_ports.txt
-          > /tmp/ping_lines.txt
-          > /tmp/ping_passed.txt
-          
-          total=0
-          
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ "$line" == "proxies:" ]] && continue
-            [[ -z "$line" ]] && continue
-            
-            url="${line#  - }"
-            
-            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
-            server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
-            
-            if [ -z "$server" ] || [ -z "$port" ]; then
-              continue
-            fi
-            
-            total=$((total + 1))
-            
-            echo "$server" >> /tmp/ping_servers.txt
-            echo "$port" >> /tmp/ping_ports.txt
-            echo "$line" >> /tmp/ping_lines.txt
-            
-          done < all_proxies.yaml
-          
-          echo "Total proxies to ping: $total"
-          echo "Starting parallel ping (50 at a time)..."
-          
-          ping_proxy() {
-            local idx=$1
-            local server=$(sed -n "${idx}p" /tmp/ping_servers.txt)
-            local port=$(sed -n "${idx}p" /tmp/ping_ports.txt)
-            local line=$(sed -n "${idx}p" /tmp/ping_lines.txt)
-            
-            # ИСПРАВЛЕНО: Проверяем exit code nc, а не вывод текста
-            if timeout 2 bash -c "echo >/dev/tcp/$server/$port" 2>/dev/null; then
-              echo "$line" >> /tmp/ping_passed.txt
-              echo "✅ $server:$port - alive"
-            else
-              echo "❌ $server:$port - dead"
-            fi
-          }
-          
-          export -f ping_proxy
-          
-          seq 1 $total | xargs -P 50 -I {} bash -c 'ping_proxy "$@"' _ {}
-          
-          if [ -f /tmp/ping_passed.txt ]; then
-            sort -u /tmp/ping_passed.txt >> ping.yaml
-          fi
-          
-          passed=$(grep -c '^-' ping.yaml 2>/dev/null) || true
-          passed=${passed:-0}
-          
-          echo ""
-          echo "=== PING TEST RESULTS ==="
-          echo "Total processed: $total"
-          echo "✅ Passed ping: $passed"
-          echo "❌ Failed ping: $((total - passed))"
-          
-          rm -f /tmp/ping_servers.txt /tmp/ping_ports.txt /tmp/ping_lines.txt /tmp/ping_passed.txt
-
       - name: Traffic test with Xray - create traff.yaml
         run: |
           set -e
-          trap 'echo "❌ ERROR at line $LINENO: $BASH_COMMAND (exit code: $?)"' ERR
           echo "Starting TRAFFIC TEST with Xray at $(date)"
           
           wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
           unzip -q Xray-linux-64.zip -d xray/
           chmod +x xray/xray
           
-          # ИСПРАВЛЕНО: Python-скрипт через echo (без heredoc)
+          # Проверка что Xray работает
+          echo "🔍 Checking Xray version..."
+          ./xray/xray version || echo "⚠️ Xray version check failed"
+          
+          # Python-скрипт для генерации конфига
           echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
           echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
           echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
@@ -183,13 +29,23 @@ jobs:
           echo '    path = params.get("path", "")' >> /tmp/gen_xray_config.py
           echo '    user = {"id": uuid}' >> /tmp/gen_xray_config.py
           echo '    if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
-          echo '    config = {"log": {"loglevel": "warning"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth"}}], "outbounds": [{"protocol": "vless", "settings": {"vnext": [{"address": server, "port": int(port), "users": [user]}]}, "streamSettings": {"network": network, "security": security}}]}' >> /tmp/gen_xray_config.py
-          echo '    if security != "none": config["outbounds"][0]["streamSettings"]["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
-          echo '    if network == "ws":' >> /tmp/gen_xray_config.py
-          echo '        ws = {"path": path} if path else {}' >> /tmp/gen_xray_config.py
-          echo '        if host: ws["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
-          echo '        config["outbounds"][0]["streamSettings"]["wsSettings"] = ws' >> /tmp/gen_xray_config.py
-          echo '    print(json.dumps(config))' >> /tmp/gen_xray_config.py
+          echo '    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}' >> /tmp/gen_xray_config.py
+          echo '    stream_settings = {"network": network, "security": security}' >> /tmp/gen_xray_config.py
+          echo '    if security == "tls":' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["tlsSettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
+          echo '    elif security == "reality":' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["realitySettings"] = {"serverName": sni if sni else server, "allowInsecure": True}' >> /tmp/gen_xray_config.py
+          echo '    if network == "ws" and (path or host):' >> /tmp/gen_xray_config.py
+          echo '        ws_settings = {}' >> /tmp/gen_xray_config.py
+          echo '        if path: ws_settings["path"] = path' >> /tmp/gen_xray_config.py
+          echo '        if host: ws_settings["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
+          echo '        stream_settings["wsSettings"] = ws_settings' >> /tmp/gen_xray_config.py
+          echo '    config = {' >> /tmp/gen_xray_config.py
+          echo '        "log": {"loglevel": "warning"},' >> /tmp/gen_xray_config.py
+          echo '        "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}],' >> /tmp/gen_xray_config.py
+          echo '        "outbounds": [{"protocol": "vless", "settings": outbound_settings, "streamSettings": stream_settings}]' >> /tmp/gen_xray_config.py
+          echo '    }' >> /tmp/gen_xray_config.py
+          echo '    print(json.dumps(config, indent=2))' >> /tmp/gen_xray_config.py
           echo 'except Exception as e:' >> /tmp/gen_xray_config.py
           echo '    print(json.dumps({"error": str(e)}), file=sys.stderr)' >> /tmp/gen_xray_config.py
           echo '    sys.exit(1)' >> /tmp/gen_xray_config.py
@@ -197,10 +53,15 @@ jobs:
           echo "proxies:" > traff.yaml
           mkdir -p /tmp/xray_results
           rm -f /tmp/xray_results/*
+          mkdir -p /tmp/xray_logs
+          rm -f /tmp/xray_logs/*
           > /tmp/xray_queue.txt
           
           total=0
-          failed_configs=0
+          valid_configs=0
+          
+          # Тестируем первые 10 прокси с полным логом
+          MAX_DEBUG=10
           
           while IFS= read -r line || [ -n "$line" ]; do
             [[ "$line" == "proxies:" ]] && continue
@@ -209,286 +70,114 @@ jobs:
             url="${line#  - }"
             total=$((total + 1))
             
+            # Тестируем только первые MAX_DEBUG с полным логом
+            if [[ $total -gt $MAX_DEBUG ]] && [[ $valid_configs -ge 2 ]]; then
+              break
+            fi
+            
             local_port=$((10000 + total))
             config_file="/tmp/xray_config_${total}.json"
-            log_file="/tmp/xray_log_${total}.txt"
             
-            python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file" 2>"$log_file"
+            python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file" 2>/tmp/xray_logs/py_err_${total}.txt
             
-            # Проверка что конфиг валидный JSON
             if ! jq -e '.' "$config_file" >/dev/null 2>&1; then
-              echo "⚠️ Invalid config for proxy #$total" >&2
-              failed_configs=$((failed_configs + 1))
+              echo "⚠️ Proxy #$total: Invalid JSON config" >&2
               continue
             fi
             
-            echo "$total|$local_port|$config_file|$line" >> /tmp/xray_queue.txt
+            valid_configs=$((valid_configs + 1))
+            echo "$total|$local_port|$config_file|$url" >> /tmp/xray_queue.txt
             
           done < ping.yaml
           
-          echo "Total proxies for traffic test: $total (valid configs: $((total - failed_configs)))"
-          echo "Starting parallel Xray test (5 at a time)..."
+          echo ""
+          echo "📋 Prepared $valid_configs valid configs for testing (from $total total)"
+          echo "🔄 Starting parallel Xray test (5 at a time)..."
+          echo ""
           
           test_xray_proxy() {
             local item="$1"
             local idx=$(echo "$item" | cut -d'|' -f1)
             local local_port=$(echo "$item" | cut -d'|' -f2)
             local config_file=$(echo "$item" | cut -d'|' -f3)
-            local line=$(echo "$item" | cut -d'|' -f4-)
+            local url=$(echo "$item" | cut -d'|' -f4-)
             
-            # Запускаем Xray с логированием
-            ./xray/xray -config "$config_file" > "/tmp/xray_run_${idx}.log" 2>&1 &
+            local log_file="/tmp/xray_logs/xray_${idx}.log"
+            local result_file="/tmp/xray_results/result_${idx}.txt"
+            
+            echo "🔍 Testing proxy #$idx..."
+            echo "   URL: ${url:0:80}..."
+            echo "   Port: $local_port"
+            
+            # Запускаем Xray
+            ./xray/xray -config "$config_file" > "$log_file" 2>&1 &
             XRAY_PID=$!
             
-            # Ждём запуска (проверяем что процесс жив и порт открыт)
+            # Ждём запуска
             local port_ready=0
-            for i in {1..15}; do
+            for i in {1..20}; do
               if ! kill -0 $XRAY_PID 2>/dev/null; then
-                echo "❌ Proxy $idx - Xray died" >&2
+                echo "   ❌ Xray process died" >&2
                 break
               fi
               if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then
                 port_ready=1
                 break
               fi
-              sleep 0.3
+              sleep 0.2
             done
             
             if [[ $port_ready -eq 1 ]]; then
-              # Тест через SOCKS5
+              echo "   ✓ Xray port open, testing connection..."
+              
               http_code=$(curl -s -o /dev/null -w "%{http_code}" \
                 --socks5-hostname 127.0.0.1:"$local_port" \
-                --connect-timeout 2 --max-time 3 \
+                --connect-timeout 3 --max-time 5 \
                 "http://www.gstatic.com/generate_204" 2>/dev/null) || http_code="000"
               
+              echo "   📡 HTTP code: $http_code"
+              
               if [[ "$http_code" == "204" ]]; then
-                echo "$line" >> "/tmp/xray_results/passed_${idx}.txt"
-                echo "✅ Proxy $idx - passed (HTTP $http_code)"
+                echo "$url" >> "$result_file"
+                echo "   ✅ PASSED"
               else
-                echo "❌ Proxy $idx - failed (HTTP $http_code)"
+                echo "   ❌ FAILED (HTTP $http_code)"
+                echo "   📄 Xray log (last 5 lines):"
+                tail -5 "$log_file" | sed 's/^/      /' >&2
               fi
+            else
+              echo "   ❌ Port never opened"
+              echo "   📄 Xray log:"
+              cat "$log_file" | sed 's/^/      /' >&2
             fi
             
             kill $XRAY_PID 2>/dev/null || true
             wait $XRAY_PID 2>/dev/null || true
-            rm -f "$config_file" "/tmp/xray_run_${idx}.log"
+            
+            echo ""
           }
           
           export -f test_xray_proxy
           
           cat /tmp/xray_queue.txt | xargs -P 5 -I {} bash -c 'test_xray_proxy "{}"'
           
+          # Собираем результаты
           if [ -d /tmp/xray_results ]; then
             cat /tmp/xray_results/*.txt >> traff.yaml 2>/dev/null || true
           fi
           
-          total=${total:-0}
           passed=$(grep -c '^-' traff.yaml 2>/dev/null) || true
           passed=${passed:-0}
           
           echo ""
+          echo "════════════════════════════════════════"
           echo "=== TRAFFIC TEST RESULTS ==="
-          echo "Total tested: $total"
+          echo "Total tested: $valid_configs"
           echo "✅ Passed traffic: $passed"
-          echo "❌ Failed traffic: $((total - passed))"
-
-      - name: Speed test - select TOP 100 to clash.yaml
-        run: |
-          set -e
-          echo "Starting SPEED TEST at $(date)"
+          echo "❌ Failed traffic: $((valid_configs - passed))"
+          echo "════════════════════════════════════════"
           
-          urldecode() {
-            local data="$1"
-            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
-            echo "$decoded"
-          }
-          
-          clean_uuid() {
-            local raw_uuid="$1"
-            echo "$raw_uuid" | sed 's/[^a-zA-Z0-9@.\-]//g'
-          }
-          
-          clean_name() {
-            echo "$1" | sed 's/[^a-zA-Z0-9.-]//g'
-          }
-          
-          > /tmp/speed_results.txt
-          
-          total=0
-          measured=0
-          
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ "$line" == "proxies:" ]] && continue
-            [[ -z "$line" ]] && continue
-            
-            url="${line#  - }"
-            total=$((total + 1))
-            
-            server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
-            server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
-            
-            if [ -z "$server" ] || [ -z "$port" ]; then
-              continue
-            fi
-            
-            echo -n "[$total] Measuring speed $server:$port... "
-            
-            start_time=$(date +%s%N)
-            
-            if curl --socks5-hostname "$server:$port" \
-                    -s -o /dev/null -w "%{http_code}" \
-                    --max-time 3 \
-                    "http://www.gstatic.com/generate_204" 2>/dev/null | grep -q "204"; then
-              
-              end_time=$(date +%s%N)
-              duration=$(( ($end_time - $start_time) / 1000000 ))
-              
-              echo "${duration}ms"
-              
-              uuid_encoded=$(echo "$url" | sed -n 's#vless://\([^@]*\)@.*#\1#p')
-              uuid_raw=$(urldecode "$uuid_encoded")
-              uuid=$(clean_uuid "$uuid_raw")
-              
-              query=$(echo "$url" | sed -n 's/.*?\(.*\)#.*/\1/p; s/.*?\(.*\)/\1/p')
-              
-              network="tcp"
-              host=""
-              path=""
-              flow=""
-              security="none"
-              sni=""
-              
-              if [ -n "$query" ]; then
-                while IFS='=' read -r key value; do
-                  [[ -z "$key" ]] && continue
-                  value=$(urldecode "$value")
-                  case "$key" in
-                    "type") network="$value" ;;
-                    "host") host="$value" ;;
-                    "path") path="$value" ;;
-                    "flow") flow="$value" ;;
-                    "security") security="$value" ;;
-                    "sni") sni="$value" ;;
-                  esac
-                done < <(echo "$query" | tr '&' '\n')
-              fi
-              
-              uuid_short=$(echo "$uuid" | cut -c1-8)
-              raw_name="${server}-${port}-${uuid_short}"
-              name=$(clean_name "$raw_name")
-              
-              {
-                echo "  - name: \"$name\""
-                echo "    type: vless"
-                echo "    server: \"$server\""
-                echo "    port: $port"
-                echo "    uuid: \"$uuid\""
-                echo "    network: \"$network\""
-                echo "    tls: false"
-                echo "    udp: true"
-              } > /tmp/proxy_entry.txt
-              
-              if [ "$security" = "tls" ] || [ "$security" = "reality" ]; then
-                echo "    tls: true" >> /tmp/proxy_entry.txt
-                if [ -n "$sni" ]; then
-                  echo "    sni: \"$sni\"" >> /tmp/proxy_entry.txt
-                fi
-              fi
-              
-              if [ -n "$flow" ]; then
-                echo "    flow: \"$flow\"" >> /tmp/proxy_entry.txt
-              fi
-              
-              if [ "$network" = "ws" ] && [ -n "$path" ]; then
-                echo "    ws-opts:" >> /tmp/proxy_entry.txt
-                echo "      path: \"$path\"" >> /tmp/proxy_entry.txt
-                if [ -n "$host" ]; then
-                  echo "      headers:" >> /tmp/proxy_entry.txt
-                  echo "        Host: \"$host\"" >> /tmp/proxy_entry.txt
-                fi
-              fi
-              
-              proxy_entry=$(cat /tmp/proxy_entry.txt)
-              rm -f /tmp/proxy_entry.txt
-              
-              echo "$duration|$proxy_entry" >> /tmp/speed_results.txt
-              measured=$((measured + 1))
-            else
-              echo "FAILED"
-            fi
-            
-          done < traff.yaml
-          
+          # Показываем сводку по логам
           echo ""
-          echo "=== SPEED TEST RESULTS ==="
-          echo "Proxies in traff.yaml: $total"
-          echo "Speed measured: $measured"
-          
-          echo ""
-          echo "Selecting TOP 100 fastest proxies..."
-          echo "proxies:" > clash.yaml
-          
-          if [ $measured -gt 0 ]; then
-            sort -n /tmp/speed_results.txt | head -100 | while IFS='|' read -r speed entry; do
-              echo "$entry" >> clash.yaml
-              echo "" >> clash.yaml
-            done
-            
-            final_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
-            final_count=${final_count:-0}
-            echo "✅ Selected TOP $final_count fastest proxies"
-          else
-            echo "⚠️ No working proxies found"
-            echo "proxies:" > clash.yaml
-          fi
-          
-          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || true
-          all_count=${all_count:-0}
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || true
-          ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || true
-          traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
-          clash_count=${clash_count:-0}
-          
-          echo ""
-          echo "=== FINAL STATISTICS ==="
-          echo "all_proxies.yaml: $all_count total"
-          echo "ping.yaml: $ping_count after ping test"
-          echo "traff.yaml: $traff_count after traffic test"
-          echo "clash.yaml: $clash_count TOP 100"
-          
-          rm -f /tmp/speed_results.txt
-
-      - name: Show Sample
-        run: |
-          echo "=== FIRST 3 PROXIES IN CLASH.YAML ==="
-          head -n 30 clash.yaml | grep -A 10 "^- name:" | head -n 30
-
-      - name: Commit and Push
-        run: |
-          if git diff --quiet && git diff --staged --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || true
-          ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || true
-          traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
-          clash_count=${clash_count:-0}
-          
-          git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
-          git commit -m "Update proxies $(date) - P:${ping_count} T:${traff_count} C:${clash_count}"
-          git push
-          echo "Changes pushed successfully"
-
-      - name: Cleanup
-        run: |
-          rm -rf /tmp/xray_results /tmp/xray_* xray/ Xray-linux-64.zip /tmp/gen_xray_config.py
-          echo "Cleanup complete"
+          echo "📄 Common Xray errors:"
+          grep -h "Error\|Failed\|error" /tmp/xray_logs/*.log 2>/dev/null | sort | uniq -c | sort -rn | head -5 || echo "   (no errors found)"
