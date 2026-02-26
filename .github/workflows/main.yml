@@ -76,7 +76,7 @@ jobs:
           
           echo "Collection completed at $(date)"
           
-          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || total_proxies=0
+          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null)
           total_proxies=${total_proxies:-0}
           echo "Found $total_proxies proxies"
 
@@ -142,7 +142,7 @@ jobs:
             sort -u /tmp/ping_passed.txt | sed 's/^/  - /' >> ping.yaml
           fi
           
-          passed=$(grep -c '^-' ping.yaml 2>/dev/null) || passed=0
+          passed=$(grep -c '^-' ping.yaml 2>/dev/null)
           passed=${passed:-0}
           
           echo ""
@@ -353,15 +353,18 @@ PYTHONSCRIPT
             done
           fi
           
-          passed=$(grep -c '^-' traff.yaml 2>/dev/null) || passed=0
+          passed=$(grep -c '^-' traff.yaml 2>/dev/null)
           passed=${passed:-0}
           
           echo ""
           echo "📊 HTTP Code Distribution:"
           if [ -f /tmp/xray_results/http_codes.txt ] && [ -s /tmp/xray_results/http_codes.txt ]; then
-            count_204=$(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_204=0
-            count_000=$(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_000=0
-            count_other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null) || count_other=0
+            count_204=$(grep -c '^204$' /tmp/xray_results/http_codes.txt 2>/dev/null)
+            count_204=${count_204:-0}
+            count_000=$(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null)
+            count_000=${count_000:-0}
+            count_other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null)
+            count_other=${count_other:-0}
             echo "   HTTP 204 (success): $count_204"
             echo "   HTTP 000 (no conn): $count_000"
             echo "   Other codes: $count_other"
@@ -552,7 +555,7 @@ PYTHONSCRIPT
               [ -f "/tmp/speed_test/proxy_${idx}.txt" ] && cat "/tmp/speed_test/proxy_${idx}.txt" >> clash.yaml
             done < /tmp/top_indices.txt
             
-            final_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || final_count=0
+            final_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null)
             final_count=${final_count:-0}
             echo "✅ Selected TOP $final_count fastest proxies"
           else
@@ -560,13 +563,13 @@ PYTHONSCRIPT
             echo "proxies:" > clash.yaml
           fi
           
-          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || all_count=0
+          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null)
           all_count=${all_count:-0}
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || ping_count=0
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null)
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || traff_count=0
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null)
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || clash_count=0
+          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null)
           clash_count=${clash_count:-0}
           
           echo ""
@@ -594,11 +597,11 @@ PYTHONSCRIPT
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || ping_count=0
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null)
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || traff_count=0
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null)
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null) || clash_count=0
+          clash_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null)
           clash_count=${clash_count:-0}
           
           git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
