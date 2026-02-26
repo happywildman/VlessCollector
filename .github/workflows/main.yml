@@ -164,55 +164,79 @@ jobs:
           
           ./xray/xray version || echo "⚠️ Xray version check failed"
           
-          # Python-скрипт для генерации конфига Xray (БЕЗ ИЗМЕНЕНИЙ)
-          echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
-          echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
-          echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
-          echo 'try:' >> /tmp/gen_xray_config.py
-          echo '    parsed = urllib.parse.urlparse(url.replace("vless://", "http://"))' >> /tmp/gen_xray_config.py
-          echo '    auth, server_port = parsed.netloc.split("@", 1)' >> /tmp/gen_xray_config.py
-          echo '    server, port = server_port.rsplit(":", 1)' >> /tmp/gen_xray_config.py
-          echo '    uuid = urllib.parse.unquote(auth)' >> /tmp/gen_xray_config.py
-          echo '    params = dict(urllib.parse.parse_qsl(parsed.query))' >> /tmp/gen_xray_config.py
-          echo '    network = params.get("type", "tcp")' >> /tmp/gen_xray_config.py
-          echo '    security = params.get("security", "none")' >> /tmp/gen_xray_config.py
-          echo '    sni = params.get("sni", "")' >> /tmp/gen_xray_config.py
-          echo '    if not sni and security in ["tls", "reality"]: sni = server' >> /tmp/gen_xray_config.py
-          echo '    flow = params.get("flow", "")' >> /tmp/gen_xray_config.py
-          echo '    host = params.get("host", "")' >> /tmp/gen_xray_config.py
-          echo '    path = params.get("path", "")' >> /tmp/gen_xray_config.py
-          echo '    pbk = params.get("pbk", "")' >> /tmp/gen_xray_config.py
-          echo '    sid = params.get("sid", params.get("shortId", ""))' >> /tmp/gen_xray_config.py
-          echo '    fp = params.get("fp", "chrome")' >> /tmp/gen_xray_config.py
-          echo '    alpn = params.get("alpn", "")' >> /tmp/gen_xray_config.py
-          echo '    user = {"id": uuid, "encryption": "none"}' >> /tmp/gen_xray_config.py
-          echo '    if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
-          echo '    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}' >> /tmp/gen_xray_config.py
-          echo '    stream_settings = {"network": network, "security": security}' >> /tmp/gen_xray_config.py
-          echo '    if security == "tls":' >> /tmp/gen_xray_config.py
-          echo '        tls_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
-          echo '        if alpn: tls_settings["alpn"] = [a.strip() for a in alpn.split(",")]' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["tlsSettings"] = tls_settings' >> /tmp/gen_xray_config.py
-          echo '    elif security == "reality":' >> /tmp/gen_xray_config.py
-          echo '        reality_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
-          echo '        if pbk: reality_settings["publicKey"] = pbk' >> /tmp/gen_xray_config.py
-          echo '        if sid: reality_settings["shortId"] = sid' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["realitySettings"] = reality_settings' >> /tmp/gen_xray_config.py
-          echo '    if network == "ws" and (path or host):' >> /tmp/gen_xray_config.py
-          echo '        ws_settings = {}' >> /tmp/gen_xray_config.py
-          echo '        if path: ws_settings["path"] = path' >> /tmp/gen_xray_config.py
-          echo '        if host: ws_settings["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["wsSettings"] = ws_settings' >> /tmp/gen_xray_config.py
-          echo '    elif network == "grpc":' >> /tmp/gen_xray_config.py
-          echo '        grpc_settings = {}' >> /tmp/gen_xray_config.py
-          echo '        if params.get("serviceName"): grpc_settings["serviceName"] = params.get("serviceName")' >> /tmp/gen_xray_config.py
-          echo '        if params.get("authority"): grpc_settings["authority"] = params.get("authority")' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["grpcSettings"] = grpc_settings' >> /tmp/gen_xray_config.py
-          echo '    config = {"log": {"loglevel": "warning"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}], "outbounds": [{"tag": "proxy", "protocol": "vless", "settings": outbound_settings, "streamSettings": stream_settings}]}' >> /tmp/gen_xray_config.py
-          echo '    print(json.dumps(config, indent=2))' >> /tmp/gen_xray_config.py
-          echo 'except Exception as e:' >> /tmp/gen_xray_config.py
-          echo '    print(json.dumps({"error": str(e)}), file=sys.stderr)' >> /tmp/gen_xray_config.py
-          echo '    sys.exit(1)' >> /tmp/gen_xray_config.py
+          # Python-скрипт для генерации конфига Xray (упрощённая генерация)
+          cat > /tmp/gen_xray_config.py << 'PYTHONSCRIPT'
+import json, sys, urllib.parse
+
+url = sys.argv[1]
+local_port = int(sys.argv[2])
+
+try:
+    parsed = urllib.parse.urlparse(url.replace("vless://", "http://"))
+    auth, server_port = parsed.netloc.split("@", 1)
+    server, port = server_port.rsplit(":", 1)
+    uuid = urllib.parse.unquote(auth)
+    params = dict(urllib.parse.parse_qsl(parsed.query))
+    
+    network = params.get("type", "tcp")
+    security = params.get("security", "none")
+    sni = params.get("sni", "")
+    if not sni and security in ["tls", "reality"]:
+        sni = server
+    flow = params.get("flow", "")
+    host = params.get("host", "")
+    path = params.get("path", "")
+    pbk = params.get("pbk", "")
+    sid = params.get("sid", params.get("shortId", ""))
+    fp = params.get("fp", "chrome")
+    alpn = params.get("alpn", "")
+    
+    user = {"id": uuid, "encryption": "none"}
+    if flow:
+        user["flow"] = flow
+    
+    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}
+    stream_settings = {"network": network, "security": security}
+    
+    if security == "tls":
+        tls_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}
+        if alpn:
+            tls_settings["alpn"] = [a.strip() for a in alpn.split(",")]
+        stream_settings["tlsSettings"] = tls_settings
+    elif security == "reality":
+        reality_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}
+        if pbk:
+            reality_settings["publicKey"] = pbk
+        if sid:
+            reality_settings["shortId"] = sid
+        stream_settings["realitySettings"] = reality_settings
+    
+    if network == "ws" and (path or host):
+        ws_settings = {}
+        if path:
+            ws_settings["path"] = path
+        if host:
+            ws_settings["headers"] = {"Host": host}
+        stream_settings["wsSettings"] = ws_settings
+    elif network == "grpc":
+        grpc_settings = {}
+        if params.get("serviceName"):
+            grpc_settings["serviceName"] = params.get("serviceName")
+        if params.get("authority"):
+            grpc_settings["authority"] = params.get("authority")
+        stream_settings["grpcSettings"] = grpc_settings
+    
+    config = {
+        "log": {"loglevel": "warning"},
+        "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}],
+        "outbounds": [{"tag": "proxy", "protocol": "vless", "settings": outbound_settings, "streamSettings": stream_settings}]
+    }
+    
+    print(json.dumps(config, indent=2))
+except Exception as e:
+    print(json.dumps({"error": str(e)}), file=sys.stderr)
+    sys.exit(1)
+PYTHONSCRIPT
           
           echo "proxies:" > traff.yaml
           mkdir -p /tmp/xray_results
@@ -259,7 +283,6 @@ jobs:
           
           > /tmp/xray_results/http_codes.txt
           
-          # ФУНКЦИЯ БЕЗ ИЗМЕНЕНИЙ (как было при 49 HTTP 204)
           test_xray_proxy() {
             local item="$1"
             local idx=$(echo "$item" | cut -d'|' -f1)
@@ -325,14 +348,12 @@ jobs:
           
           cat /tmp/xray_queue.txt | xargs -P 5 -I {} bash -c 'test_xray_proxy "{}"'
           
-          # СБОР РЕЗУЛЬТАТОВ: добавлен префикс "  - " для совместимости с grep
           if [ -d /tmp/xray_results ]; then
             for f in /tmp/xray_results/result_*.txt; do
               [ -f "$f" ] && sed 's/^/  - /' "$f" >> traff.yaml
             done
           fi
           
-          # ИСПРАВЛЕНИЕ: || echo 0 вместо || true
           passed=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
           passed=${passed:-0}
           
@@ -362,66 +383,18 @@ jobs:
           set -e
           echo "Starting SPEED TEST at $(date)"
           
-          # Проверка что traff.yaml не пустой
           if ! grep -q '^-' traff.yaml 2>/dev/null; then
             echo "⚠️ traff.yaml is empty, creating empty clash.yaml"
             echo "proxies:" > clash.yaml
             exit 0
           fi
           
-          # Используем тот же Xray (не удаляли в конце Шага 3)
           if [ ! -f xray/xray ]; then
             echo "⚠️ Xray not found, downloading..."
             wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
             unzip -q Xray-linux-64.zip -d xray/
             chmod +x xray/xray
           fi
-          
-          # Тот же Python-скрипт для генерации конфига
-          echo 'import json, sys, urllib.parse' > /tmp/gen_xray_config.py
-          echo 'url = sys.argv[1]' >> /tmp/gen_xray_config.py
-          echo 'local_port = int(sys.argv[2])' >> /tmp/gen_xray_config.py
-          echo 'try:' >> /tmp/gen_xray_config.py
-          echo '    parsed = urllib.parse.urlparse(url.replace("vless://", "http://"))' >> /tmp/gen_xray_config.py
-          echo '    auth, server_port = parsed.netloc.split("@", 1)' >> /tmp/gen_xray_config.py
-          echo '    server, port = server_port.rsplit(":", 1)' >> /tmp/gen_xray_config.py
-          echo '    uuid = urllib.parse.unquote(auth)' >> /tmp/gen_xray_config.py
-          echo '    params = dict(urllib.parse.parse_qsl(parsed.query))' >> /tmp/gen_xray_config.py
-          echo '    network = params.get("type", "tcp")' >> /tmp/gen_xray_config.py
-          echo '    security = params.get("security", "none")' >> /tmp/gen_xray_config.py
-          echo '    sni = params.get("sni", "")' >> /tmp/gen_xray_config.py
-          echo '    if not sni and security in ["tls", "reality"]: sni = server' >> /tmp/gen_xray_config.py
-          echo '    flow = params.get("flow", "")' >> /tmp/gen_xray_config.py
-          echo '    host = params.get("host", "")' >> /tmp/gen_xray_config.py
-          echo '    path = params.get("path", "")' >> /tmp/gen_xray_config.py
-          echo '    pbk = params.get("pbk", "")' >> /tmp/gen_xray_config.py
-          echo '    sid = params.get("sid", params.get("shortId", ""))' >> /tmp/gen_xray_config.py
-          echo '    fp = params.get("fp", "chrome")' >> /tmp/gen_xray_config.py
-          echo '    user = {"id": uuid, "encryption": "none"}' >> /tmp/gen_xray_config.py
-          echo '    if flow: user["flow"] = flow' >> /tmp/gen_xray_config.py
-          echo '    outbound_settings = {"vnext": [{"address": server, "port": int(port), "users": [user]}]}' >> /tmp/gen_xray_config.py
-          echo '    stream_settings = {"network": network, "security": security}' >> /tmp/gen_xray_config.py
-          echo '    if security == "tls":' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["tlsSettings"] = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
-          echo '    elif security == "reality":' >> /tmp/gen_xray_config.py
-          echo '        reality_settings = {"serverName": sni, "allowInsecure": True, "fingerprint": fp}' >> /tmp/gen_xray_config.py
-          echo '        if pbk: reality_settings["publicKey"] = pbk' >> /tmp/gen_xray_config.py
-          echo '        if sid: reality_settings["shortId"] = sid' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["realitySettings"] = reality_settings' >> /tmp/gen_xray_config.py
-          echo '    if network == "ws" and (path or host):' >> /tmp/gen_xray_config.py
-          echo '        ws_settings = {}' >> /tmp/gen_xray_config.py
-          echo '        if path: ws_settings["path"] = path' >> /tmp/gen_xray_config.py
-          echo '        if host: ws_settings["headers"] = {"Host": host}' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["wsSettings"] = ws_settings' >> /tmp/gen_xray_config.py
-          echo '    elif network == "grpc":' >> /tmp/gen_xray_config.py
-          echo '        grpc_settings = {}' >> /tmp/gen_xray_config.py
-          echo '        if params.get("serviceName"): grpc_settings["serviceName"] = params.get("serviceName")' >> /tmp/gen_xray_config.py
-          echo '        stream_settings["grpcSettings"] = grpc_settings' >> /tmp/gen_xray_config.py
-          echo '    config = {"log": {"loglevel": "none"}, "inbounds": [{"port": local_port, "protocol": "socks", "settings": {"auth": "noauth", "udp": True}}], "outbounds": [{"tag": "proxy", "protocol": "vless", "settings": outbound_settings, "streamSettings": stream_settings}]}' >> /tmp/gen_xray_config.py
-          echo '    print(json.dumps(config, indent=2))' >> /tmp/gen_xray_config.py
-          echo 'except Exception as e:' >> /tmp/gen_xray_config.py
-          echo '    print(json.dumps({"error": str(e)}), file=sys.stderr)' >> /tmp/gen_xray_config.py
-          echo '    sys.exit(1)' >> /tmp/gen_xray_config.py
           
           urldecode() {
             local data="$1"
@@ -451,7 +424,6 @@ jobs:
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
-            # Чтение URL с учётом префикса "  - "
             url="${line#  - }"
             total=$((total + 1))
             
@@ -528,7 +500,6 @@ jobs:
               raw_name="${server}-${port}-${uuid_short}"
               name=$(clean_name "$raw_name")
               
-              # Конвертация в Clash-формат
               {
                 echo "  - name: \"$name\""
                 echo "    type: vless"
@@ -574,7 +545,6 @@ jobs:
           echo ""
           echo "Selecting TOP 100 fastest proxies..."
           
-          # Отбор TOP 100 по скорости
           if [ $measured -gt 0 ] && [ -f /tmp/speed_results.txt ]; then
             sort -n /tmp/speed_results.txt | head -100 | cut -d'|' -f2 | while read idx; do
               [ -f "/tmp/speed_test/proxy_${idx}.txt" ] && cat "/tmp/speed_test/proxy_${idx}.txt" >> clash.yaml
