@@ -42,17 +42,18 @@ jobs:
           total_urls=$(grep -v '^#' "$SOURCE_FILE" | grep -v '^$' | wc -l)
           echo "Found $total_urls URLs to process"
 
-          while IFS= read -r url || [ -n "$url" ]; do
+          while IFS= read -r url; do
+            [ -z "$url" ] && continue
             clean_url=$(echo "$url" | tr -d '\r' | tr -d '"' | xargs)
             [[ -z "$clean_url" || "$clean_url" == \#* ]] && continue
             
             count=$((count + 1))
             echo "[$count/$total_urls] Processing: $clean_url"
             
-            curl -fsSL --max-time 10 --max-filesize 1M "$clean_url" >> temp.txt 2>/dev/null || {
+            if ! curl -fsSL --max-time 10 --max-filesize 1M "$clean_url" >> temp.txt 2>/dev/null; then
               echo "  ⚠️ Failed to fetch or too large"
               continue
-            }
+            fi
             echo "" >> temp.txt
             echo "  ✅ Done"
           done < "$SOURCE_FILE"
@@ -70,7 +71,7 @@ jobs:
             | awk 'length($0) > 40 && length($0) < 1200' \
             | sort -u \
             | head -n 10000 \
-            | sed 's/^/  - /' >> all_proxies.yaml || true
+            | sed 's/^/  - /' >> all_proxies.yaml
 
           rm -f temp.txt
           
@@ -96,7 +97,7 @@ jobs:
           
           total=0
           
-          while IFS= read -r line || [ -n "$line" ]; do
+          while IFS= read -r line; do
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
@@ -104,7 +105,8 @@ jobs:
             
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
             server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
+            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$')
+            port=${port:-}
             
             if [ -z "$server" ] || [ -z "$port" ]; then
               continue
@@ -248,7 +250,7 @@ PYTHONSCRIPT
           valid_configs=0
           MAX_DEBUG=100
           
-          while IFS= read -r line || [ -n "$line" ]; do
+          while IFS= read -r line; do
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
@@ -316,7 +318,10 @@ PYTHONSCRIPT
               http_code=$(curl -s -o /dev/null -w "%{http_code}" \
                 --socks5-hostname 127.0.0.1:"$local_port" \
                 --connect-timeout 5 --max-time 10 \
-                "http://www.gstatic.com/generate_204" 2>/dev/null) || http_code="000"
+                "http://www.gstatic.com/generate_204" 2>/dev/null)
+              if [ -z "$http_code" ]; then
+                http_code="000"
+              fi
               
               echo "$http_code" >> /tmp/xray_results/http_codes.txt
               echo "   📡 HTTP code: $http_code"
@@ -337,8 +342,8 @@ PYTHONSCRIPT
               cat "$log_file" | sed 's/^/      /' >&2
             fi
             
-            kill $XRAY_PID 2>/dev/null || true
-            wait $XRAY_PID 2>/dev/null || true
+            kill $XRAY_PID 2>/dev/null
+            wait $XRAY_PID 2>/dev/null
             rm -f "$config_file" "$log_file"
             
             echo ""
@@ -402,7 +407,10 @@ PYTHONSCRIPT
           
           urldecode() {
             local data="$1"
-            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null || echo "$data")
+            decoded=$(echo "$data" | sed 's/%/\\x/g' | xargs -0 printf "%b" 2>/dev/null)
+            if [ -z "$decoded" ]; then
+              decoded="$data"
+            fi
             echo "$decoded"
           }
           
@@ -424,18 +432,19 @@ PYTHONSCRIPT
           measured=0
           MAX_SPEED_TEST=100
           
-          while IFS= read -r line || [ -n "$line" ]; do
+          while IFS= read -r line; do
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
             url="${line#  - }"
             total=$((total + 1))
             
-            [[ $measured -ge $MAX_SPEED_TEST ]] && break
+            [ $measured -ge $MAX_SPEED_TEST ] && break
             
             server_port=$(echo "$url" | sed -n 's#vless://[^@]*@\([^?#]*\).*#\1#p')
             server=$(echo "$server_port" | cut -d: -f1)
-            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$' || true)
+            port=$(echo "$server_port" | cut -d: -f2 | grep -E '^[0-9]+$')
+            port=${port:-}
             
             if [ -z "$server" ] || [ -z "$port" ]; then
               continue
@@ -443,7 +452,9 @@ PYTHONSCRIPT
             
             local_port=$((20000 + total))
             config_file="/tmp/speed_test/config_${total}.json"
-            python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file" 2>/dev/null || continue
+            if ! python3 /tmp/gen_xray_config.py "$url" "$local_port" > "$config_file" 2>/dev/null; then
+              continue
+            fi
             
             echo -n "[$total] Measuring speed $server:$port... "
             
@@ -451,7 +462,9 @@ PYTHONSCRIPT
             XRAY_PID=$!
             
             for i in {1..20}; do
-              if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then break; fi
+              if nc -z 127.0.0.1 "$local_port" 2>/dev/null; then
+                break
+              fi
               sleep 0.2
             done
             
@@ -460,12 +473,15 @@ PYTHONSCRIPT
             http_code=$(curl -s -o /dev/null -w "%{http_code}" \
               --socks5-hostname 127.0.0.1:"$local_port" \
               --connect-timeout 3 --max-time 5 \
-              "http://www.gstatic.com/generate_204" 2>/dev/null) || http_code="000"
+              "http://www.gstatic.com/generate_204" 2>/dev/null)
+            if [ -z "$http_code" ]; then
+              http_code="000"
+            fi
             
             end_time=$(date +%s%N)
             
-            kill $XRAY_PID 2>/dev/null || true
-            wait $XRAY_PID 2>/dev/null || true
+            kill $XRAY_PID 2>/dev/null
+            wait $XRAY_PID 2>/dev/null
             rm -f "$config_file"
             
             if [[ "$http_code" == "204" ]]; then
@@ -487,7 +503,7 @@ PYTHONSCRIPT
               
               if [ -n "$query" ]; then
                 while IFS='=' read -r key value; do
-                  [[ -z "$key" ]] && continue
+                  [ -z "$key" ] && continue
                   value=$(urldecode "$value")
                   case "$key" in
                     "type") network="$value" ;;
@@ -552,7 +568,9 @@ PYTHONSCRIPT
           if [ $measured -gt 0 ] && [ -f /tmp/speed_results.txt ]; then
             sort -n /tmp/speed_results.txt | head -100 | cut -d'|' -f2 > /tmp/top_indices.txt
             while read -r idx; do
-              [ -f "/tmp/speed_test/proxy_${idx}.txt" ] && cat "/tmp/speed_test/proxy_${idx}.txt" >> clash.yaml
+              if [ -f "/tmp/speed_test/proxy_${idx}.txt" ]; then
+                cat "/tmp/speed_test/proxy_${idx}.txt" >> clash.yaml
+              fi
             done < /tmp/top_indices.txt
             
             final_count=$(grep -c '^  - name:' clash.yaml 2>/dev/null)
