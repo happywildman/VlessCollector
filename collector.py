@@ -565,24 +565,30 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
         print("⚠️ No proxies to test")
         return []
     
-    # Создаём прокси с source из all_proxies.yaml
+    # Создаём прокси с source
     proxies_with_source = []
+    url_to_source = {}
+    
+    # Сначала создаём словарь для быстрого поиска source по URL
+    for source_url, stats in source_stats.items():
+        if stats.total_proxies > 0:
+            url_to_source[source_url] = source_url
+    
     for line in lines:
         url = line.replace('  - ', '', 1)
-        # Сначала парсим без source, чтобы получить данные
-        temp_proxy = VlessProxy.from_url(url)
-        if temp_proxy:
-            # Ищем source по URL в source_stats
+        # Парсим прокси
+        proxy = VlessProxy.from_url(url)
+        if proxy:
+            # Ищем source по частичному совпадению URL
             found_source = ""
-            for src_url, stats in source_stats.items():
-                # Проверяем, принадлежит ли этот URL источнику
-                # Это приблизительно, но лучше чем ничего
-                if stats.total_proxies > 0:
-                    # Просто берём первый непустой источник
+            for src_url in url_to_source.values():
+                # Берём базовый URL без параметров для сравнения
+                base_src = src_url.split('?')[0].split('#')[0]
+                if base_src in url:
                     found_source = src_url
                     break
             
-            # Создаём прокси с source
+            # Создаём прокси с найденным source
             proxy = VlessProxy.from_url(url, found_source)
             if proxy:
                 proxies_with_source.append((proxy, line))
@@ -603,7 +609,7 @@ def step2_ping_test(config: Config, source_stats: Dict[str, SourceStats]) -> Lis
             try:
                 success, ping_time = future.result()
                 
-                # Обновляем статистику
+                # Обновляем статистику если source найден
                 if proxy.source and proxy.source in source_stats:
                     source_stats[proxy.source].add_ping_result(success, ping_time)
                 
@@ -652,21 +658,26 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> 
         print("⚠️ No proxies to test")
         return []
     
-    # Создаём прокси с source из ping.yaml
+    # Создаём прокси с source
     proxies_with_source = []
+    url_to_source = {}
+    
+    for source_url, stats in source_stats.items():
+        if stats.total_proxies > 0:
+            url_to_source[source_url] = source_url
+    
     for line in lines:
         url = line.replace('  - ', '', 1)
-        # Сначала парсим без source
-        temp_proxy = VlessProxy.from_url(url)
-        if temp_proxy:
-            # Ищем source в source_stats по URL
+        proxy = VlessProxy.from_url(url)
+        if proxy:
+            # Ищем source по частичному совпадению URL
             found_source = ""
-            for src_url, stats in source_stats.items():
-                if stats.total_proxies > 0:
+            for src_url in url_to_source.values():
+                base_src = src_url.split('?')[0].split('#')[0]
+                if base_src in url:
                     found_source = src_url
                     break
             
-            # Создаём прокси с source
             proxy = VlessProxy.from_url(url, found_source)
             if proxy:
                 proxies_with_source.append((proxy, line))
@@ -694,7 +705,7 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats]) -> 
             try:
                 success, duration = future.result()
                 
-                # Обновляем статистику
+                # Обновляем статистику если source найден
                 if proxy.source and proxy.source in source_stats:
                     source_stats[proxy.source].add_traffic_result(success)
                 
