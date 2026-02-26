@@ -43,8 +43,8 @@ class Config:
     
     xray_timeout: int = 4
     xray_connect_timeout: int = 4
-    xray_parallel: int = 3  # Уменьшено до 3
-    xray_start_timeout: int = 2  # Уменьшено до 2
+    xray_parallel: int = 3
+    xray_start_timeout: int = 2
     
     # Фильтры
     ping_threshold: int = 500
@@ -760,11 +760,14 @@ def step4_generate_clash(config: Config) -> List[str]:
         for line in clash_lines:
             f.write(f"{line}\n")
     
+    # Подсчитываем реальное количество прокси (строки с "  - name:")
+    proxies_count = len([l for l in clash_lines if l.startswith('  - name:')])
+    
     print(f"\n=== FINAL STATISTICS ===")
     print(f"all_proxies.yaml: {len(read_yaml_proxies(config.all_proxies_file))}")
     print(f"ping.yaml: {len(read_yaml_proxies(config.ping_file))}")
     print(f"traff.yaml: {len(read_yaml_proxies(config.traff_file))}")
-    print(f"clash.yaml: {len(clash_lines)} TOP {config.top_count}")
+    print(f"clash.yaml: {proxies_count} TOP {config.top_count}")
     
     return clash_lines
 
@@ -781,6 +784,7 @@ def save_source_stats(config: Config, source_stats: Dict[str, SourceStats]):
         f.write("="*60 + "\n\n")
         f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         
+        # Сортируем по количеству прошедших трафик (от лучших к худшим)
         sorted_sources = sorted(
             source_stats.items(),
             key=lambda x: (x[1].traffic_passed, x[1].ping_passed),
@@ -792,6 +796,7 @@ def save_source_stats(config: Config, source_stats: Dict[str, SourceStats]):
                 f.write(stats.to_string())
                 f.write("-"*40 + "\n")
         
+        # Общая статистика
         total_proxies = sum(s.total_proxies for s in source_stats.values())
         total_ping = sum(s.ping_passed for s in source_stats.values())
         total_traffic = sum(s.traffic_passed for s in source_stats.values())
