@@ -473,38 +473,48 @@ def clean_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
 
 
-# === НОВАЯ ФУНКЦИЯ ДЛЯ GEOIP ===
-def get_country_flag(ip_address: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
+# === НОВАЯ ФУНКЦИЯ ДЛЯ GEOIP С РЕЗОЛВИНГОМ ДОМЕНОВ ===
+def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
     """
-    Определяет код страны и возвращает флаг-эмодзи для IP-адреса.
-    Если определить не удалось или это домен, возвращает '🌍'.
+    Определяет код страны и возвращает флаг-эмодзи для сервера.
+    Если сервер - домен, пытается получить его IP через DNS.
+    Если определить не удалось, возвращает '🌍'.
     """
-    # Если это не IP-адрес (простая проверка), возвращаем глобус
-    if not re.match(r'^\d+\.\d+\.\d+\.\d+$', ip_address):
+    import socket
+    
+    # Функция для преобразования кода страны в эмодзи
+    def code_to_flag(code):
+        if code and len(code) == 2:
+            return chr(ord(code[0]) + 127397) + chr(ord(code[1]) + 127397)
         return "🌍"
-
-    try:
-        # Проверяем, существует ли файл базы данных
-        if not os.path.exists(db_path):
+    
+    # Проверяем, является ли сервер IP-адресом
+    is_ip = re.match(r'^\d+\.\d+\.\d+\.\d+$', server)
+    
+    ip_to_check = server
+    if not is_ip:
+        # Это домен - пытаемся получить IP
+        try:
+            print(f"  🔍 Resolving {server}...", end="")
+            ip_to_check = socket.gethostbyname(server)
+            print(f" -> {ip_to_check}")
+        except Exception as e:
+            print(f" failed: {e}")
             return "🌍"
-            
+    
+    # Проверяем существование базы данных
+    if not os.path.exists(db_path):
+        return "🌍"
+    
+    try:
         # Открываем базу данных
         with geoip2.database.Reader(db_path) as reader:
-            response = reader.country(ip_address)
+            response = reader.country(ip_to_check)
             country_code = response.country.iso_code
-            if country_code:
-                # Преобразуем код страны в эмодзи-флаг
-                # Флаги строятся из двух букв, смещённых в юникоде
-                return chr(ord(country_code[0]) + 127397) + chr(ord(country_code[1]) + 127397)
-            else:
-                return "🌍"
-    except FileNotFoundError:
-        return "🌍"
+            return code_to_flag(country_code)
     except geoip2.errors.AddressNotFoundError:
-        # IP не найден в базе
         return "🌍"
     except Exception as e:
-        # Любая другая ошибка
         return "🌍"
 
 
@@ -771,6 +781,10 @@ def step4_generate_clash(config: Config) -> List[str]:
     clash_lines = []
     seen = set()
     
+    # Статистика по доменам
+    domain_count = 0
+    resolved_count = 0
+    
     for idx, line in enumerate(top_lines, 1):
         url = line.replace('  - ', '', 1)
         proxy = VlessProxy.from_url(url)
@@ -784,11 +798,19 @@ def step4_generate_clash(config: Config) -> List[str]:
         seen.add(key)
         
         uuid_short = proxy.uuid[:8] if len(proxy.uuid) >= 8 else proxy.uuid
-        # === ИЗМЕНЕНО: добавляем флаг к имени ===
+        
+        # === ПОЛУЧАЕМ ФЛАГ С РЕЗОЛВИНГОМ ДОМЕНОВ ===
         flag = get_country_flag(proxy.server, config.geoip_db)
+        
+        # Считаем статистику по доменам
+        if not re.match(r'^\d+\.\d+\.\d+\.\d+$', proxy.server):
+            domain_count += 1
+            if flag != "🌍":
+                resolved_count += 1
+        # ==========================================
+        
         base_name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
         name = f"{flag}{base_name}"
-        # ========================================
         
         clash_config = proxy.to_clash_config(name)
         
@@ -831,6 +853,12 @@ def step4_generate_clash(config: Config) -> List[str]:
     print(f"ping.yaml: {len(read_yaml_proxies(config.ping_file))}")
     print(f"traff.yaml: {len(read_yaml_proxies(config.traff_file))}")
     print(f"clash.yaml: {proxies_count} TOP {config.top_count}")
+    
+    # Вывод статистики по доменам
+    if domain_count > 0:
+        print(f"\n=== DNS RESOLUTION STATS ===")
+        print(f"Domains processed: {domain_count}")
+        print(f"Successfully resolved: {resolved_count} ({resolved_count/domain_count*100:.1f}%)")
     
     return clash_lines
 
