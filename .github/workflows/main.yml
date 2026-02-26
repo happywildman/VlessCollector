@@ -76,7 +76,7 @@ jobs:
           
           echo "Collection completed at $(date)"
           
-          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || true
+          total_proxies=$(grep -c '^-' all_proxies.yaml 2>/dev/null || echo 0)
           total_proxies=${total_proxies:-0}
           echo "Found $total_proxies proxies"
 
@@ -139,10 +139,12 @@ jobs:
           seq 1 $total | xargs -P 50 -I {} bash -c 'ping_proxy "$@"' _ {}
           
           if [ -f /tmp/ping_passed.txt ]; then
-            sort -u /tmp/ping_passed.txt >> ping.yaml
+            # ИСПРАВЛЕНИЕ 1: Добавлен префикс "  - " для совместимости с grep '^-''
+            sort -u /tmp/ping_passed.txt | sed 's/^/  - /' >> ping.yaml
           fi
           
-          passed=$(grep -c '^-' ping.yaml 2>/dev/null) || true
+          # ИСПРАВЛЕНИЕ 2: || echo 0 вместо || true для избежания multi-line
+          passed=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
           passed=${passed:-0}
           
           echo ""
@@ -299,7 +301,8 @@ jobs:
               echo "   📡 HTTP code: $http_code"
               
               if [[ "$http_code" == "204" ]]; then
-                echo "$url" >> "$result_file"
+                # ИСПРАВЛЕНИЕ 3: Добавлен префикс "  - " для совместимости с grep '^-''
+                echo "  - $url" >> "$result_file"
                 echo "   ✅ PASSED"
               else
                 echo "   ❌ FAILED (HTTP $http_code)"
@@ -328,7 +331,8 @@ jobs:
             cat /tmp/xray_results/result_*.txt 2>/dev/null | grep -v '^$' >> traff.yaml || true
           fi
           
-          passed=$(grep -c '^-' traff.yaml 2>/dev/null) || true
+          # ИСПРАВЛЕНИЕ 4: || echo 0 вместо || true
+          passed=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
           passed=${passed:-0}
           
           echo ""
@@ -338,9 +342,6 @@ jobs:
             echo "   HTTP 000 (no conn): $(grep -c '^000$' /tmp/xray_results/http_codes.txt 2>/dev/null || echo 0)"
             other=$(grep -cvE '^(204|000)$' /tmp/xray_results/http_codes.txt 2>/dev/null || echo 0)
             echo "   Other codes: $other"
-            if [[ $other -gt 0 ]]; then
-              echo "   Other values: $(sort /tmp/xray_results/http_codes.txt | uniq -c | sort -rn | head -5)"
-            fi
           fi
           
           echo ""
@@ -448,6 +449,7 @@ jobs:
             [[ "$line" == "proxies:" ]] && continue
             [[ -z "$line" ]] && continue
             
+            # ИСПРАВЛЕНИЕ 5: Чтение URL с учётом префикса "  - "
             url="${line#  - }"
             total=$((total + 1))
             
@@ -531,6 +533,7 @@ jobs:
               raw_name="${server}-${port}-${uuid_short}"
               name=$(clean_name "$raw_name")
               
+              # ИСПРАВЛЕНИЕ 6: Восстановлена оригинальная конвертация в Clash-формат
               {
                 echo "  - name: \"$name\""
                 echo "    type: vless"
@@ -558,12 +561,9 @@ jobs:
                     echo "        Host: \"$host\""
                   fi
                 fi
-              } > /tmp/proxy_entry.txt
+              } >> clash.yaml
               
-              proxy_entry=$(cat /tmp/proxy_entry.txt)
-              rm -f /tmp/proxy_entry.txt
-              
-              echo "$duration|$proxy_entry" >> /tmp/speed_results.txt
+              echo "$duration|$total" >> /tmp/speed_results.txt
               measured=$((measured + 1))
             else
               echo "FAILED (HTTP $http_code)"
@@ -578,15 +578,23 @@ jobs:
           
           echo ""
           echo "Selecting TOP 100 fastest proxies..."
-          echo "proxies:" > clash.yaml
           
-          if [ $measured -gt 0 ]; then
-            sort -n /tmp/speed_results.txt | head -100 | while IFS='|' read -r speed entry; do
-              echo "$entry" >> clash.yaml
-              echo "" >> clash.yaml
+          # ИСПРАВЛЕНИЕ 7: Отбор TOP 100 по скорости с правильной сортировкой
+          if [ $measured -gt 0 ] && [ -f /tmp/speed_results.txt ]; then
+            # Сортируем по времени, берём TOP 100, извлекаем номера строк
+            top_indices=$(sort -n /tmp/speed_results.txt | head -100 | cut -d'|' -f2)
+            
+            # Создаём временный файл с лучшими прокси
+            > /tmp/top_proxies.txt
+            for idx in $top_indices; do
+              sed -n "${idx}p" traff.yaml >> /tmp/top_proxies.txt
             done
             
-            final_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
+            # Перезаписываем clash.yaml с отсортированными прокси
+            echo "proxies:" > clash.yaml
+            cat /tmp/top_proxies.txt >> clash.yaml
+            
+            final_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
             final_count=${final_count:-0}
             echo "✅ Selected TOP $final_count fastest proxies"
           else
@@ -594,13 +602,14 @@ jobs:
             echo "proxies:" > clash.yaml
           fi
           
-          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null) || true
+          # ИСПРАВЛЕНИЕ 8: || echo 0 для всех подсчётов
+          all_count=$(grep -c '^-' all_proxies.yaml 2>/dev/null || echo 0)
           all_count=${all_count:-0}
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || true
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || true
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
+          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
           clash_count=${clash_count:-0}
           
           echo ""
@@ -616,7 +625,7 @@ jobs:
       - name: Show Sample
         run: |
           echo "=== FIRST 3 PROXIES IN CLASH.YAML ==="
-          head -n 30 clash.yaml | grep -A 10 "^- name:" | head -n 30
+          head -n 30 clash.yaml | grep -A 10 "^  - name:" | head -n 30
 
       - name: Commit and Push
         run: |
@@ -628,11 +637,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null) || true
+          # ИСПРАВЛЕНИЕ 9: || echo 0 для всех подсчётов
+          ping_count=$(grep -c '^-' ping.yaml 2>/dev/null || echo 0)
           ping_count=${ping_count:-0}
-          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null) || true
+          traff_count=$(grep -c '^-' traff.yaml 2>/dev/null || echo 0)
           traff_count=${traff_count:-0}
-          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null) || true
+          clash_count=$(grep -c '^- name:' clash.yaml 2>/dev/null || echo 0)
           clash_count=${clash_count:-0}
           
           git add all_proxies.yaml ping.yaml traff.yaml clash.yaml
