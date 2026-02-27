@@ -473,7 +473,7 @@ def clean_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
 
 
-# === НОВАЯ ФУНКЦИЯ ДЛЯ GEOIP С РЕЗОЛВИНГОМ ДОМЕНОВ ===
+# === ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ GEOIP С ПОДРОБНОЙ ОТЛАДКОЙ ===
 def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
     """
     Определяет код страны и возвращает флаг-эмодзи для сервера.
@@ -482,39 +482,52 @@ def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') 
     """
     import socket
     
+    print(f"  🚩 get_country_flag called for: {server}")
+    
     # Функция для преобразования кода страны в эмодзи
     def code_to_flag(code):
         if code and len(code) == 2:
             return chr(ord(code[0]) + 127397) + chr(ord(code[1]) + 127397)
         return "🌍"
     
+    # Проверяем существование базы данных
+    if not os.path.exists(db_path):
+        print(f"  ⚠️ GeoIP database NOT FOUND at {db_path}")
+        return "🌍"
+    else:
+        print(f"  ✅ GeoIP database found at {db_path}")
+    
     # Проверяем, является ли сервер IP-адресом
     is_ip = re.match(r'^\d+\.\d+\.\d+\.\d+$', server)
+    print(f"  🔍 Is IP? {is_ip}")
     
     ip_to_check = server
     if not is_ip:
         # Это домен - пытаемся получить IP
+        print(f"  🌐 Resolving domain: {server}...")
         try:
-            print(f"  🔍 Resolving {server}...", end="")
             ip_to_check = socket.gethostbyname(server)
-            print(f" -> {ip_to_check}")
+            print(f"  ✅ Resolved to IP: {ip_to_check}")
         except Exception as e:
-            print(f" failed: {e}")
+            print(f"  ❌ Failed to resolve {server}: {e}")
             return "🌍"
+    else:
+        print(f"  📍 Using IP directly: {ip_to_check}")
     
-    # Проверяем существование базы данных
-    if not os.path.exists(db_path):
-        return "🌍"
-    
+    # Определяем страну по IP
     try:
-        # Открываем базу данных
+        print(f"  🔎 Looking up country for IP: {ip_to_check}")
         with geoip2.database.Reader(db_path) as reader:
             response = reader.country(ip_to_check)
             country_code = response.country.iso_code
-            return code_to_flag(country_code)
+            flag = code_to_flag(country_code)
+            print(f"  🏁 Country code: {country_code}, Flag: {flag}")
+            return flag
     except geoip2.errors.AddressNotFoundError:
+        print(f"  ❌ IP {ip_to_check} not found in GeoIP database")
         return "🌍"
     except Exception as e:
+        print(f"  ❌ GeoIP error: {e}")
         return "🌍"
 
 
