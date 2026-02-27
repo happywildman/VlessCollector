@@ -55,7 +55,7 @@ class Config:
     top_count: int = 100
     
     # URLs для тестов
-    test_url: str = "http://www.gstatic.com/generate_204"
+    test_urls: List[str] = None
     
     # Xray
     xray_url: str = "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip"
@@ -65,6 +65,14 @@ class Config:
     
     # GeoIP база
     geoip_db: str = "geoip/GeoLite2-Country.mmdb"
+    
+    def __post_init__(self):
+        if self.test_urls is None:
+            self.test_urls = [
+                "http://www.gstatic.com/generate_204",
+                "https://www.google.com/generate_204",
+                "https://cp.cloudflare.com/generate_204"
+            ]
 
 
 # ============================================================================
@@ -386,26 +394,28 @@ def ping_test(proxy: VlessProxy, timeout: int = 2) -> Tuple[bool, float]:
         return False, 0
 
 
-def test_proxy_with_xray(proxy: VlessProxy, xray_path: str, 
-                         test_url: str, timeout: int = 4,
+def test_proxy_with_xray(proxy: VlessProxy, xray_path: str,
+                         test_urls: List[str], timeout: int = 3,
                          start_timeout: int = 2) -> Tuple[bool, float]:
     """
-    Проверить прокси через Xray с гарантированным завершением
+    Проверить прокси через Xray на доступ к нескольким URL (параллельно).
+    Возвращает (успех, минимальное время в мс)
     """
     local_port = 1080
     config_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
-    
+
     try:
         config = proxy.to_xray_config(local_port)
         json.dump(config, config_file, indent=2)
         config_file.close()
-        
+
         process = subprocess.Popen(
             [xray_path, '-config', config_file.name],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        
+
+        # Ждём готовности порта
         port_ready = False
         for i in range(15):
             time.sleep(0.2)
@@ -416,7 +426,7 @@ def test_proxy_with_xray(proxy: VlessProxy, xray_path: str,
             if result == 0:
                 port_ready = True
                 break
-        
+
         if not port_ready:
             process.terminate()
             try:
@@ -424,38 +434,57 @@ def test_proxy_with_xray(proxy: VlessProxy, xray_path: str,
             except:
                 process.kill()
             return False, 0
-        
-        start = time.time_ns()
-        
-        curl_cmd = [
-            'curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
-            '--socks5-hostname', f'127.0.0.1:{local_port}',
-            '--connect-timeout', str(timeout),
-            '--max-time', str(timeout + 2),
-            test_url
-        ]
-        
-        try:
-            result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=timeout+3)
-            http_code = result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            http_code = "TIMEOUT"
-        
-        end = time.time_ns()
-        duration = (end - start) / 1_000_000
-        
+
+        # === ПАРАЛЛЕЛЬНАЯ ПРОВЕРКА ВСЕХ URL ===
+        fastest_time = float('inf')
+        any_success = False
+
+        def check_single_url(test_url):
+            start = time.time_ns()
+            curl_cmd = [
+                'curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                '--socks5-hostname', f'127.0.0.1:{local_port}',
+                '--connect-timeout', str(timeout),
+                '--max-time', str(timeout + 2),
+                test_url
+            ]
+            try:
+                result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=timeout+2)
+                http_code = result.stdout.strip()
+            except subprocess.TimeoutExpired:
+                http_code = "TIMEOUT"
+
+            end = time.time_ns()
+            duration = (end - start) / 1_000_000
+            return http_code, duration
+
+        # Запускаем проверку всех URL параллельно
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(test_urls)) as executor:
+            futures = {executor.submit(check_single_url, url): url for url in test_urls}
+            for future in concurrent.futures.as_completed(futures, timeout=timeout+3):
+                try:
+                    http_code, duration = future.result()
+                    if http_code == '204':
+                        any_success = True
+                        if duration < fastest_time:
+                            fastest_time = duration
+                except Exception as e:
+                    continue
+
         process.terminate()
         try:
             process.wait(timeout=2)
         except:
             process.kill()
-        
-        return http_code == '204', duration
-        
+
+        if any_success:
+            return True, fastest_time
+        return False, 0
+
     except Exception as e:
         print(f"  ⚠️ Xray test error: {e}", file=sys.stderr)
         return False, 0
-        
+
     finally:
         try:
             os.unlink(config_file.name)
@@ -473,7 +502,7 @@ def clean_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
 
 
-# === ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ GEOIP С ПОДРОБНОЙ ОТЛАДКОЙ ===
+# === ФУНКЦИЯ ДЛЯ GEOIP С ПОДРОБНОЙ ОТЛАДКОЙ ===
 def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
     """
     Определяет код страны и возвращает флаг-эмодзи для сервера.
@@ -738,7 +767,7 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats], url
                 test_proxy_with_xray, 
                 proxy, 
                 config.xray_bin, 
-                config.test_url,
+                config.test_urls,  # ← теперь передаём список URL
                 config.xray_timeout,
                 config.xray_start_timeout
             ): (idx, proxy, line)
