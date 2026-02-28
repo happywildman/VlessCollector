@@ -170,9 +170,9 @@ class VlessProxy:
         """Вернуть строку для YAML файла (без source)"""
         return f"  - {self.raw_url}"
     
-    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С ОБФУСКАЦИЕЙ =====
+    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С ALLOW-INSECURE =====
     def to_clash_config(self, name: str) -> Dict[str, Any]:
-        """Сгенерировать конфиг для Clash (с обфускацией UDP)"""
+        """Сгенерировать конфиг для Clash (с обфускацией UDP и отключенной проверкой сертификатов)"""
         config = {
             "name": name,
             "type": "vless",
@@ -186,6 +186,9 @@ class VlessProxy:
             "xudp": True,
             "udp-over-tcp": True,
             "packet-encoding": "xudp",
+            # ОТКЛЮЧАЕМ ПРОВЕРКУ СЕРТИФИКАТОВ (решение проблемы с IP SANs)
+            "allow-insecure": True,
+            "skip-cert-verify": True,
         }
         
         if self.security in ['tls', 'reality'] and self.sni:
@@ -907,6 +910,13 @@ def step4_generate_clash(config: Config) -> List[str]:
         if 'packet-encoding' in clash_config:
             clash_lines.append(f"    packet-encoding: \"{clash_config['packet-encoding']}\"")
         # ======================================
+        
+        # === ДОБАВЛЯЕМ ALLOW-INSECURE ===
+        if 'allow-insecure' in clash_config:
+            clash_lines.append(f"    allow-insecure: {str(clash_config['allow-insecure']).lower()}")
+        if 'skip-cert-verify' in clash_config:
+            clash_lines.append(f"    skip-cert-verify: {str(clash_config['skip-cert-verify']).lower()}")
+        # =================================
         
         if 'sni' in clash_config:
             clash_lines.append(f"    sni: \"{clash_config['sni']}\"")
