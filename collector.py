@@ -170,7 +170,6 @@ class VlessProxy:
         """Вернуть строку для YAML файла (без source)"""
         return f"  - {self.raw_url}"
     
-    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С ALLOW-INSECURE =====
     def to_clash_config(self, name: str) -> Dict[str, Any]:
         """Сгенерировать конфиг для Clash (с обфускацией UDP и отключенной проверкой сертификатов)"""
         config = {
@@ -186,7 +185,7 @@ class VlessProxy:
             "xudp": True,
             "udp-over-tcp": True,
             "packet-encoding": "xudp",
-            # ОТКЛЮЧАЕМ ПРОВЕРКУ СЕРТИФИКАТОВ (решение проблемы с IP SANs)
+            # ОТКЛЮЧАЕМ ПРОВЕРКУ СЕРТИФИКАТОВ
             "allow-insecure": True,
             "skip-cert-verify": True,
         }
@@ -206,7 +205,6 @@ class VlessProxy:
             config["ws-opts"] = ws_opts
         
         return config
-    # =================================================
     
     def to_xray_config(self, local_port: int) -> Dict[str, Any]:
         """Сгенерировать конфиг для Xray"""
@@ -893,11 +891,12 @@ def step4_generate_clash(config: Config) -> List[str]:
         
         clash_config = proxy.to_clash_config(name)
         
-        clash_lines.append(f"  - name: \"{clash_config['name']}\"")
+        # ===== ИСПРАВЛЕНО: УБРАНЫ ЛИШНИЕ КАВЫЧКИ =====
+        clash_lines.append(f"  - name: {clash_config['name']}")
         clash_lines.append(f"    type: {clash_config['type']}")
-        clash_lines.append(f"    server: \"{clash_config['server']}\"")
+        clash_lines.append(f"    server: {clash_config['server']}")
         clash_lines.append(f"    port: {clash_config['port']}")
-        clash_lines.append(f"    uuid: \"{clash_config['uuid']}\"")
+        clash_lines.append(f"    uuid: {clash_config['uuid']}")
         clash_lines.append(f"    network: {clash_config['network']}")
         clash_lines.append(f"    tls: {str(clash_config['tls']).lower()}")
         clash_lines.append(f"    udp: {str(clash_config['udp']).lower()}")
@@ -908,7 +907,7 @@ def step4_generate_clash(config: Config) -> List[str]:
         if 'udp-over-tcp' in clash_config:
             clash_lines.append(f"    udp-over-tcp: {str(clash_config['udp-over-tcp']).lower()}")
         if 'packet-encoding' in clash_config:
-            clash_lines.append(f"    packet-encoding: \"{clash_config['packet-encoding']}\"")
+            clash_lines.append(f"    packet-encoding: {clash_config['packet-encoding']}")
         # ======================================
         
         # === ДОБАВЛЯЕМ ALLOW-INSECURE ===
@@ -919,19 +918,19 @@ def step4_generate_clash(config: Config) -> List[str]:
         # =================================
         
         if 'sni' in clash_config:
-            clash_lines.append(f"    sni: \"{clash_config['sni']}\"")
+            clash_lines.append(f"    sni: {clash_config['sni']}")
         
         if 'flow' in clash_config:
-            clash_lines.append(f"    flow: \"{clash_config['flow']}\"")
+            clash_lines.append(f"    flow: {clash_config['flow']}")
         
         if 'ws-opts' in clash_config:
             clash_lines.append(f"    ws-opts:")
             ws = clash_config['ws-opts']
             if 'path' in ws:
-                clash_lines.append(f"      path: \"{ws['path']}\"")
+                clash_lines.append(f"      path: {ws['path']}")
             if 'headers' in ws and 'Host' in ws['headers']:
                 clash_lines.append(f"      headers:")
-                clash_lines.append(f"        Host: \"{ws['headers']['Host']}\"")
+                clash_lines.append(f"        Host: {ws['headers']['Host']}")
         
         clash_lines.append("")
         selected += 1
