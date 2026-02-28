@@ -1,105 +1,7 @@
 proxies:
-  - name: "🇨🇾yesok42v2.ip4exordir.shop-8880-8dc7722c"
-    type: vless
-    server: "yesok42v2.ip4exordir.shop"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🇺🇸fast.panelha.sbs-80-95f75825"
-    type: vless
-    server: "fast.panelha.sbs"
-    port: 80
-    uuid: "95f75825-bbcc-4e53-a91d-9364db9d4b42"
-    network: xhttp
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
   - name: "🇨🇾45.82.251.195-8880-8dc7722c"
     type: vless
     server: "45.82.251.195"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🇺🇸185.236.232.117-8880-8dc7722c"
-    type: vless
-    server: "185.236.232.117"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🇨🇾45.82.251.233-8880-8dc7722c"
-    type: vless
-    server: "45.82.251.233"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🇨🇾45.82.251.116-8880-8dc7722c"
-    type: vless
-    server: "45.82.251.116"
-    port: 8880
-    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
-    network: grpc
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🌍172.67.175.118-8880-f8d4581a"
-    type: vless
-    server: "172.67.175.118"
-    port: 8880
-    uuid: "f8d4581a-6dd4-5f4d-b37d-b994c5ae81b1"
-    network: xhttp
-    tls: false
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-
-  - name: "🇨🇾yesok42v1.ip4exordir.shop-8880-8dc7722c"
-    type: vless
-    server: "yesok42v1.ip4exordir.shop"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -125,11 +27,25 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇺🇸5.180.24.228-443-0bfcc743"
+  - name: "🇺🇸40.160.4.127-8880-6251f84e"
     type: vless
-    server: "5.180.24.228"
+    server: "40.160.4.127"
+    port: 8880
+    uuid: "6251f84e-9c02-4140-921c-6b47d394fb96"
+    network: grpc
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇺🇸15.204.12.101-443-a54cc2cf"
+    type: vless
+    server: "15.204.12.101"
     port: 443
-    uuid: "0bfcc743-5d47-4ce6-9ec1-b6cc6defad75"
+    uuid: "a54cc2cf-c22f-4739-9adc-4ed5a7b08841"
     network: tcp
     tls: true
     udp: true
@@ -138,11 +54,11 @@ proxies:
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
-    sni: "yahoo.com"
+    sni: "yandex.com"
 
-  - name: "🇨🇾45.82.251.208-8880-8dc7722c"
+  - name: "🇨🇾45.82.251.115-8880-8dc7722c"
     type: vless
-    server: "45.82.251.208"
+    server: "45.82.251.115"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -154,9 +70,9 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇨🇾pqh18v7.viripdirect.shop-8880-8dc7722c"
+  - name: "🇺🇸185.236.232.117-8880-8dc7722c"
     type: vless
-    server: "pqh18v7.viripdirect.shop"
+    server: "185.236.232.117"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -168,11 +84,68 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇺🇸40.160.4.20-8880-6251f84e"
+  - name: "🇨🇾yesok42v2.ip4exordir.shop-8880-8dc7722c"
     type: vless
-    server: "40.160.4.20"
+    server: "yesok42v2.ip4exordir.shop"
     port: 8880
-    uuid: "6251f84e-9c02-4140-921c-6b47d394fb96"
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇺🇸38.12.4.37-17882-45c6f7ef"
+    type: vless
+    server: "38.12.4.37"
+    port: 17882
+    uuid: "45c6f7ef-505e-4b6f-825d-9d27d9e22eca"
+    network: tcp
+    tls: true
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+    sni: "www.amazon.com"
+
+  - name: "🇨🇾45.82.251.233-8880-8dc7722c"
+    type: vless
+    server: "45.82.251.233"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🌍172.67.175.118-8880-f8d4581a"
+    type: vless
+    server: "172.67.175.118"
+    port: 8880
+    uuid: "f8d4581a-6dd4-5f4d-b37d-b994c5ae81b1"
+    network: xhttp
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇨🇾45.82.251.249-8880-8dc7722c"
+    type: vless
+    server: "45.82.251.249"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
     tls: false
     udp: true
@@ -196,24 +169,9 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇺🇸103.113.70.21-443-3b9ff760"
+  - name: "🇨🇾45.82.251.33-8880-8dc7722c"
     type: vless
-    server: "103.113.70.21"
-    port: 443
-    uuid: "3b9ff760-6b22-467b-a54f-e25a82a40908"
-    network: tcp
-    tls: true
-    udp: true
-    xudp: true
-    udp-over-tcp: true
-    packet-encoding: "xudp"
-    allow-insecure: true
-    skip-cert-verify: true
-    sni: "yahoo.com"
-
-  - name: "🇨🇾45.82.251.115-8880-8dc7722c"
-    type: vless
-    server: "45.82.251.115"
+    server: "45.82.251.33"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -240,9 +198,9 @@ proxies:
     skip-cert-verify: true
     sni: "yahoo.com"
 
-  - name: "🇨🇾45.82.251.33-8880-8dc7722c"
+  - name: "🇨🇾45.82.251.208-8880-8dc7722c"
     type: vless
-    server: "45.82.251.33"
+    server: "45.82.251.208"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -254,26 +212,39 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇺🇸38.180.204.189-443-8e633674"
+  - name: "🇺🇸199.232.240.249-80-Parsasho"
     type: vless
-    server: "38.180.204.189"
-    port: 443
-    uuid: "8e633674-dd04-45c0-a900-04066988bd2e"
-    network: tcp
-    tls: true
+    server: "199.232.240.249"
+    port: 80
+    uuid: "Parsashonam-338"
+    network: xhttp
+    tls: false
     udp: true
     xudp: true
     udp-over-tcp: true
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
-    sni: "google.com"
 
-  - name: "🇨🇾45.12.135.99-443-bd3649eb"
+  - name: "🇨🇾pqh18v7.viripdirect.shop-8880-8dc7722c"
     type: vless
-    server: "45.12.135.99"
+    server: "pqh18v7.viripdirect.shop"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
+    network: grpc
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇺🇸5.180.24.228-443-0bfcc743"
+    type: vless
+    server: "5.180.24.228"
     port: 443
-    uuid: "bd3649eb-1f72-4629-8d20-ee640b03f0e1"
+    uuid: "0bfcc743-5d47-4ce6-9ec1-b6cc6defad75"
     network: tcp
     tls: true
     udp: true
@@ -284,9 +255,68 @@ proxies:
     skip-cert-verify: true
     sni: "yahoo.com"
 
-  - name: "🇨🇾45.82.251.249-8880-8dc7722c"
+  - name: "🇺🇸80.209.241.221-1443-1196e623"
     type: vless
-    server: "45.82.251.249"
+    server: "80.209.241.221"
+    port: 1443
+    uuid: "1196e623-dc85-4a56-ba4b-8c1b886331f6"
+    network: xhttp
+    tls: true
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+    sni: "www.microsoft.com"
+
+  - name: "🇱🇹13p9ochv.tree-top.cc-8443-ce13ec9d"
+    type: vless
+    server: "13p9ochv.tree-top.cc"
+    port: 8443
+    uuid: "ce13ec9d-0f04-49c0-9877-0e7d1e657895"
+    network: grpc
+    tls: true
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+    sni: "maviks.ru"
+
+  - name: "🇺🇸103.113.70.21-443-3b9ff760"
+    type: vless
+    server: "103.113.70.21"
+    port: 443
+    uuid: "3b9ff760-6b22-467b-a54f-e25a82a40908"
+    network: tcp
+    tls: true
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+    sni: "yahoo.com"
+
+  - name: "🇺🇸40.160.4.20-8880-6251f84e"
+    type: vless
+    server: "40.160.4.20"
+    port: 8880
+    uuid: "6251f84e-9c02-4140-921c-6b47d394fb96"
+    network: grpc
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇨🇾45.82.251.116-8880-8dc7722c"
+    type: vless
+    server: "45.82.251.116"
     port: 8880
     uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
@@ -298,20 +328,19 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇷🇺37.139.32.63-7443-c501c66b"
+  - name: "🇨🇾yesok42v1.ip4exordir.shop-8880-8dc7722c"
     type: vless
-    server: "37.139.32.63"
-    port: 7443
-    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
+    server: "yesok42v1.ip4exordir.shop"
+    port: 8880
+    uuid: "8dc7722c-2767-4eea-a28b-2f8daacc07e3"
     network: grpc
-    tls: true
+    tls: false
     udp: true
     xudp: true
     udp-over-tcp: true
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
-    sni: "5post-gate.x5.ru"
 
   - name: "🇬🇧Cr7.zx-shop.ir-8880-abd432ba"
     type: vless
@@ -327,11 +356,11 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🌍b.pabloping.cloud-2052-2271c50f"
+  - name: "🇺🇸167.82.105.8-80-Parsasho"
     type: vless
-    server: "b.pabloping.cloud"
-    port: 2052
-    uuid: "2271c50f-ac7a-4d7f-8b04-64085b0daa56"
+    server: "167.82.105.8"
+    port: 80
+    uuid: "Parsashonam-338"
     network: xhttp
     tls: false
     udp: true
@@ -341,12 +370,12 @@ proxies:
     allow-insecure: true
     skip-cert-verify: true
 
-  - name: "🇺🇸144.31.18.73-2083-c501c66b"
+  - name: "🇺🇸64.23.143.23-34045-d8dd94fd"
     type: vless
-    server: "144.31.18.73"
-    port: 2083
-    uuid: "c501c66b-c6c2-456b-b604-80393b83d67f"
-    network: grpc
+    server: "64.23.143.23"
+    port: 34045
+    uuid: "d8dd94fd-540e-461d-b5d4-acebef02c22a"
+    network: raw
     tls: true
     udp: true
     xudp: true
@@ -354,13 +383,27 @@ proxies:
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
-    sni: "apple.com"
+    sni: "visit-this-invitation-link-to-join-tg-enkelte-notif.ekt.me"
 
-  - name: "🇺🇸174.136.205.68-443-36f50f2b"
+  - name: "🇬🇧199.232.173.212-80-3d142a41"
     type: vless
-    server: "174.136.205.68"
+    server: "199.232.173.212"
+    port: 80
+    uuid: "3d142a41-8e57-47d7-a579-f52c6eae79f7"
+    network: xhttp
+    tls: false
+    udp: true
+    xudp: true
+    udp-over-tcp: true
+    packet-encoding: "xudp"
+    allow-insecure: true
+    skip-cert-verify: true
+
+  - name: "🇺🇸66.179.82.126-443-b1267991"
+    type: vless
+    server: "66.179.82.126"
     port: 443
-    uuid: "36f50f2b-8dc0-471a-8840-ef2cda112517"
+    uuid: "b1267991-59ff-4b67-b141-97e3ced4e7c8"
     network: tcp
     tls: true
     udp: true
@@ -369,19 +412,20 @@ proxies:
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
-    sni: "navi.bankrate.com"
+    sni: "yahoo.com"
 
-  - name: "🇷🇺brittest1.youtubesaver.ru-38741-135e0a40"
+  - name: "🇷🇺178.154.222.55-8443-621d5f40"
     type: vless
-    server: "brittest1.youtubesaver.ru"
-    port: 38741
-    uuid: "135e0a40-736c-4902-a712-8c66f75923ca"
-    network: xhttp
-    tls: false
+    server: "178.154.222.55"
+    port: 8443
+    uuid: "621d5f40-707c-40f0-8b5c-253d38e1d0cb"
+    network: tcp
+    tls: true
     udp: true
     xudp: true
     udp-over-tcp: true
     packet-encoding: "xudp"
     allow-insecure: true
     skip-cert-verify: true
+    sni: "max.ru"
 
