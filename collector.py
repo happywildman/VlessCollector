@@ -560,6 +560,26 @@ def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') 
         return "🌍"
 
 
+# === ФУНКЦИЯ ФИЛЬТРАЦИИ (ТОЛЬКО ПО ТИПУ) ===
+def is_proxy_allowed(proxy: VlessProxy) -> bool:
+    """
+    Проверяет, удовлетворяет ли прокси критериям отбора:
+    - Reality (любой порт) - ОСТАВЛЯЕМ
+    - XHTTP/gRPC (любой порт) - ОСТАВЛЯЕМ
+    - Всё остальное - ОТБРАСЫВАЕМ
+    """
+    # Reality - пропускаем всегда (любой порт)
+    if proxy.security == "reality":
+        return True
+    
+    # XHTTP/gRPC - пропускаем всегда (любой порт)
+    if proxy.network in ["xhttp", "grpc"]:
+        return True
+    
+    # Всё остальное отбрасываем
+    return False
+
+
 # ============================================================================
 # ОСНОВНЫЕ ФУНКЦИИ
 # ============================================================================
@@ -805,26 +825,6 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats], url
     return traff_lines
 
 
-# === НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ ===
-def is_proxy_allowed(proxy: VlessProxy) -> bool:
-    """
-    Проверяет, удовлетворяет ли прокси критериям отбора:
-    - Порт только 443
-    - Только Reality, XHTTP, gRPC
-    """
-    # Проверка порта
-    if proxy.port != 443:
-        return False
-    
-    # Проверка типа
-    if proxy.security == "reality":
-        return True
-    if proxy.network in ["xhttp", "grpc"]:
-        return True
-    
-    return False
-
-
 def step4_generate_clash(config: Config) -> List[str]:
     """
     ШАГ 4: Генерация TOP 100 для Clash
@@ -856,11 +856,11 @@ def step4_generate_clash(config: Config) -> List[str]:
         if not proxy:
             continue
         
-        # ===== ФИЛЬТРАЦИЯ =====
+        # ===== ФИЛЬТРАЦИЯ ПО ТИПУ =====
         if not is_proxy_allowed(proxy):
             filtered_count += 1
             continue
-        # ======================
+        # ==============================
         
         key = f"{proxy.server}:{proxy.port}:{proxy.uuid}"
         if key in seen:
@@ -869,7 +869,7 @@ def step4_generate_clash(config: Config) -> List[str]:
         
         uuid_short = proxy.uuid[:8] if len(proxy.uuid) >= 8 else proxy.uuid
         
-        # === ПОЛУЧАЕМ ФЛАГ ===
+        # === ПОЛУЧАЕМ ФЛАГ С РЕЗОЛВИНГОМ ДОМЕНОВ ===
         flag = get_country_flag(proxy.server, config.geoip_db)
         
         # Считаем статистику по доменам
@@ -877,6 +877,7 @@ def step4_generate_clash(config: Config) -> List[str]:
             domain_count += 1
             if flag != "🌍":
                 resolved_count += 1
+        # ==========================================
         
         base_name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
         name = f"{flag}{base_name}"
@@ -915,14 +916,14 @@ def step4_generate_clash(config: Config) -> List[str]:
         for line in clash_lines:
             f.write(f"{line}\n")
     
-    # Подсчитываем реальное количество прокси
+    # Подсчитываем реальное количество прокси (строки с "  - name:")
     proxies_count = len([l for l in clash_lines if l.startswith('  - name:')])
     
     print(f"\n=== FINAL STATISTICS ===")
     print(f"all_proxies.yaml: {len(read_yaml_proxies(config.all_proxies_file))}")
     print(f"ping.yaml: {len(read_yaml_proxies(config.ping_file))}")
     print(f"traff.yaml: {len(read_yaml_proxies(config.traff_file))}")
-    print(f"Filtered out (wrong port/type): {filtered_count}")
+    print(f"Filtered out (wrong type): {filtered_count}")
     print(f"clash.yaml: {proxies_count} TOP {config.top_count}")
     
     # Вывод статистики по доменам
@@ -946,7 +947,7 @@ def save_source_stats(config: Config, source_stats: Dict[str, SourceStats]):
         f.write("="*60 + "\n\n")
         f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         
-        # Сортируем по количеству прошедших трафик
+        # Сортируем по количеству прошедших трафик (от лучших к худшим)
         sorted_sources = sorted(
             source_stats.items(),
             key=lambda x: (x[1].traffic_passed, x[1].ping_passed),
