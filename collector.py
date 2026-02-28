@@ -171,7 +171,7 @@ class VlessProxy:
         return f"  - {self.raw_url}"
     
     def to_clash_config(self, name: str) -> Dict[str, Any]:
-        """Сгенерировать конфиг для Clash (поддерживает Reality и gRPC)"""
+        """Сгенерировать конфиг для Clash"""
         config = {
             "name": name,
             "type": "vless",
@@ -183,26 +183,12 @@ class VlessProxy:
             "udp": True,
         }
         
-        # Добавляем sni для TLS/Reality
         if self.security in ['tls', 'reality'] and self.sni:
             config["sni"] = self.sni
         
-        # Добавляем flow если есть
         if self.flow:
             config["flow"] = self.flow
         
-        # ДЛЯ REALITY - добавляем специальные параметры
-        if self.security == "reality":
-            if self.pbk:
-                config["public-key"] = self.pbk
-            if self.sid:
-                config["short-id"] = self.sid
-        
-        # Добавляем fingerprint
-        if self.fp and self.fp != "chrome":
-            config["client-fingerprint"] = self.fp
-        
-        # WebSocket параметры
         if self.network == "ws" and (self.path or self.host):
             ws_opts = {}
             if self.path:
@@ -210,16 +196,6 @@ class VlessProxy:
             if self.host:
                 ws_opts["headers"] = {"Host": self.host}
             config["ws-opts"] = ws_opts
-        
-        # gRPC параметры
-        if self.network == "grpc":
-            grpc_opts = {}
-            if self.service_name:
-                grpc_opts["grpc-service-name"] = self.service_name
-            elif self.path:
-                # Иногда path используется для service-name
-                grpc_opts["grpc-service-name"] = self.path
-            config["grpc-opts"] = grpc_opts
         
         return config
     
@@ -526,37 +502,6 @@ def clean_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
 
 
-# === НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ ПРОКСИ ===
-def is_proxy_allowed(proxy: VlessProxy) -> bool:
-    """
-    Проверяет, удовлетворяет ли прокси критериям отбора:
-    - Порт только 443
-    - Только VLESS (уже выполняется)
-    - Только Reality, XHTTP, gRPC (WebSocket + TLS исключён)
-    - Для reality обязательно наличие flow и ключей
-    """
-    # 1. Проверка порта: оставляем только 443
-    if proxy.port != 443:
-        return False
-
-    # 2. Проверка транспорта и параметров безопасности
-    if proxy.security == "reality":
-        # Reality обязателен с flow xtls-rprx-vision и ключами
-        if proxy.flow == "xtls-rprx-vision" and proxy.pbk and proxy.sid:
-            return True
-        else:
-            # Reality без vision или без ключей не подходит
-            return False
-    
-    elif proxy.network in ["xhttp", "grpc"]:
-        # XHTTP и gRPC проходят (независимо от TLS)
-        return True
-    
-    else:
-        # Всё остальное (tcp, ws, ws+tls, и т.д.) отбрасываем
-        return False
-
-
 # === ФУНКЦИЯ ДЛЯ GEOIP С ПОДРОБНОЙ ОТЛАДКОЙ ===
 def get_country_flag(server: str, db_path: str = 'geoip/GeoLite2-Country.mmdb') -> str:
     """
@@ -822,7 +767,7 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats], url
                 test_proxy_with_xray, 
                 proxy, 
                 config.xray_bin, 
-                config.test_urls,  # ← теперь передаём список URL
+                config.test_urls,
                 config.xray_timeout,
                 config.xray_start_timeout
             ): (idx, proxy, line)
@@ -860,6 +805,26 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats], url
     return traff_lines
 
 
+# === НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ ===
+def is_proxy_allowed(proxy: VlessProxy) -> bool:
+    """
+    Проверяет, удовлетворяет ли прокси критериям отбора:
+    - Порт только 443
+    - Только Reality, XHTTP, gRPC
+    """
+    # Проверка порта
+    if proxy.port != 443:
+        return False
+    
+    # Проверка типа
+    if proxy.security == "reality":
+        return True
+    if proxy.network in ["xhttp", "grpc"]:
+        return True
+    
+    return False
+
+
 def step4_generate_clash(config: Config) -> List[str]:
     """
     ШАГ 4: Генерация TOP 100 для Clash
@@ -881,6 +846,7 @@ def step4_generate_clash(config: Config) -> List[str]:
     # Статистика по доменам
     domain_count = 0
     resolved_count = 0
+    filtered_count = 0
     selected = 0
     
     for idx, line in enumerate(top_lines, 1):
@@ -890,10 +856,11 @@ def step4_generate_clash(config: Config) -> List[str]:
         if not proxy:
             continue
         
-        # ===== ФИЛЬТРАЦИЯ ПО КРИТЕРИЯМ =====
+        # ===== ФИЛЬТРАЦИЯ =====
         if not is_proxy_allowed(proxy):
-            continue  # пропускаем неподходящие прокси
-        # ===================================
+            filtered_count += 1
+            continue
+        # ======================
         
         key = f"{proxy.server}:{proxy.port}:{proxy.uuid}"
         if key in seen:
@@ -902,7 +869,7 @@ def step4_generate_clash(config: Config) -> List[str]:
         
         uuid_short = proxy.uuid[:8] if len(proxy.uuid) >= 8 else proxy.uuid
         
-        # === ПОЛУЧАЕМ ФЛАГ С РЕЗОЛВИНГОМ ДОМЕНОВ ===
+        # === ПОЛУЧАЕМ ФЛАГ ===
         flag = get_country_flag(proxy.server, config.geoip_db)
         
         # Считаем статистику по доменам
@@ -910,7 +877,6 @@ def step4_generate_clash(config: Config) -> List[str]:
             domain_count += 1
             if flag != "🌍":
                 resolved_count += 1
-        # ==========================================
         
         base_name = clean_name(f"{proxy.server}-{proxy.port}-{uuid_short}")
         name = f"{flag}{base_name}"
@@ -932,23 +898,6 @@ def step4_generate_clash(config: Config) -> List[str]:
         if 'flow' in clash_config:
             clash_lines.append(f"    flow: \"{clash_config['flow']}\"")
         
-        # === ДОБАВЛЕННЫЕ СТРОКИ ДЛЯ REALITY И gRPC ===
-        if 'public-key' in clash_config:
-            clash_lines.append(f"    public-key: \"{clash_config['public-key']}\"")
-        
-        if 'short-id' in clash_config:
-            clash_lines.append(f"    short-id: \"{clash_config['short-id']}\"")
-        
-        if 'client-fingerprint' in clash_config:
-            clash_lines.append(f"    client-fingerprint: {clash_config['client-fingerprint']}")
-        
-        if 'grpc-opts' in clash_config:
-            clash_lines.append(f"    grpc-opts:")
-            grpc = clash_config['grpc-opts']
-            if 'grpc-service-name' in grpc:
-                clash_lines.append(f"      grpc-service-name: \"{grpc['grpc-service-name']}\"")
-        # ==============================================
-        
         if 'ws-opts' in clash_config:
             clash_lines.append(f"    ws-opts:")
             ws = clash_config['ws-opts']
@@ -966,14 +915,15 @@ def step4_generate_clash(config: Config) -> List[str]:
         for line in clash_lines:
             f.write(f"{line}\n")
     
-    # Подсчитываем реальное количество прокси (строки с "  - name:")
+    # Подсчитываем реальное количество прокси
     proxies_count = len([l for l in clash_lines if l.startswith('  - name:')])
     
     print(f"\n=== FINAL STATISTICS ===")
     print(f"all_proxies.yaml: {len(read_yaml_proxies(config.all_proxies_file))}")
     print(f"ping.yaml: {len(read_yaml_proxies(config.ping_file))}")
     print(f"traff.yaml: {len(read_yaml_proxies(config.traff_file))}")
-    print(f"clash.yaml: {proxies_count} TOP {config.top_count} (filtered from {selected})")
+    print(f"Filtered out (wrong port/type): {filtered_count}")
+    print(f"clash.yaml: {proxies_count} TOP {config.top_count}")
     
     # Вывод статистики по доменам
     if domain_count > 0:
@@ -996,7 +946,7 @@ def save_source_stats(config: Config, source_stats: Dict[str, SourceStats]):
         f.write("="*60 + "\n\n")
         f.write(f"Дата: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         
-        # Сортируем по количеству прошедших трафик (от лучших к худшим)
+        # Сортируем по количеству прошедших трафик
         sorted_sources = sorted(
             source_stats.items(),
             key=lambda x: (x[1].traffic_passed, x[1].ping_passed),
