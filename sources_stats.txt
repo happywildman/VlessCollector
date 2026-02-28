@@ -2,114 +2,114 @@
 📊 СТАТИСТИКА ПО ИСТОЧНИКАМ ПРОКСИ
 ============================================================
 
-Дата: 2026-02-28 12:54:13
+Дата: 2026-02-28 14:06:14
 
 📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/1.txt
-   Total: 532
-   ✅ Ping passed: 487 (91.5%)
-   ⚡ Avg ping: 127ms
-   🚀 Traffic passed: 323
+   Total: 536
+   ✅ Ping passed: 498 (92.9%)
+   ⚡ Avg ping: 159ms
+   🚀 Traffic passed: 309
+----------------------------------------
+📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/23.txt
+   Total: 272
+   ✅ Ping passed: 261 (96.0%)
+   ⚡ Avg ping: 64ms
+   🚀 Traffic passed: 89
 ----------------------------------------
 📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/24.txt
-   Total: 459
-   ✅ Ping passed: 166 (36.2%)
-   ⚡ Avg ping: 124ms
-   🚀 Traffic passed: 52
+   Total: 460
+   ✅ Ping passed: 167 (36.3%)
+   ⚡ Avg ping: 149ms
+   🚀 Traffic passed: 64
 ----------------------------------------
 📌 https://raw.githubusercontent.com/VovaplusEXP/p-configs/main/Splitted-By-Protocol-Secure/vless.txt
-   Total: 46
-   ✅ Ping passed: 45 (97.8%)
-   ⚡ Avg ping: 162ms
+   Total: 50
+   ✅ Ping passed: 48 (96.0%)
+   ⚡ Avg ping: 203ms
    🚀 Traffic passed: 37
 ----------------------------------------
 📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/26.txt
-   Total: 433
-   ✅ Ping passed: 130 (30.0%)
-   ⚡ Avg ping: 134ms
-   🚀 Traffic passed: 29
+   Total: 428
+   ✅ Ping passed: 126 (29.4%)
+   ⚡ Avg ping: 163ms
+   🚀 Traffic passed: 34
 ----------------------------------------
 📌 https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt
-   Total: 50
-   ✅ Ping passed: 35 (70.0%)
-   ⚡ Avg ping: 309ms
-   🚀 Traffic passed: 23
-----------------------------------------
-📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/23.txt
-   Total: 55
-   ✅ Ping passed: 41 (74.5%)
-   ⚡ Avg ping: 76ms
-   🚀 Traffic passed: 18
+   Total: 46
+   ✅ Ping passed: 32 (69.6%)
+   ⚡ Avg ping: 331ms
+   🚀 Traffic passed: 21
 ----------------------------------------
 📌 https://raw.githubusercontent.com/mohamadfg-dev/telegram-v2ray-configs-collector/refs/heads/main/category/vless.txt
    Total: 136
-   ✅ Ping passed: 43 (31.6%)
-   ⚡ Avg ping: 54ms
-   🚀 Traffic passed: 17
-----------------------------------------
-📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/22.txt
-   Total: 24
-   ✅ Ping passed: 23 (95.8%)
-   ⚡ Avg ping: 296ms
-   🚀 Traffic passed: 15
-----------------------------------------
-📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS_mobile.txt
-   Total: 21
-   ✅ Ping passed: 21 (100.0%)
-   ⚡ Avg ping: 93ms
+   ✅ Ping passed: 40 (29.4%)
+   ⚡ Avg ping: 76ms
    🚀 Traffic passed: 11
 ----------------------------------------
-📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/25.txt
-   Total: 94
-   ✅ Ping passed: 28 (29.8%)
-   ⚡ Avg ping: 61ms
-   🚀 Traffic passed: 5
+📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS_mobile.txt
+   Total: 16
+   ✅ Ping passed: 16 (100.0%)
+   ⚡ Avg ping: 212ms
+   🚀 Traffic passed: 11
+----------------------------------------
+📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/22.txt
+   Total: 23
+   ✅ Ping passed: 22 (95.7%)
+   ⚡ Avg ping: 102ms
+   🚀 Traffic passed: 10
 ----------------------------------------
 📌 https://raw.githubusercontent.com/55prosek-lgtm/vpn_config_for_russia/refs/heads/main/whitelist.txt
    Total: 21
-   ✅ Ping passed: 17 (81.0%)
-   ⚡ Avg ping: 153ms
-   🚀 Traffic passed: 5
+   ✅ Ping passed: 18 (85.7%)
+   ⚡ Avg ping: 178ms
+   🚀 Traffic passed: 9
 ----------------------------------------
-📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/6.txt
-   Total: 3
-   ✅ Ping passed: 3 (100.0%)
-   ⚡ Avg ping: 278ms
-   🚀 Traffic passed: 3
-----------------------------------------
-📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-SNI-RU-all.txt
-   Total: 4
-   ✅ Ping passed: 4 (100.0%)
-   ⚡ Avg ping: 136ms
-   🚀 Traffic passed: 2
+📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/25.txt
+   Total: 92
+   ✅ Ping passed: 23 (25.0%)
+   ⚡ Avg ping: 74ms
+   🚀 Traffic passed: 8
 ----------------------------------------
 📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile.txt
-   Total: 4
-   ✅ Ping passed: 3 (75.0%)
-   ⚡ Avg ping: 129ms
+   Total: 5
+   ✅ Ping passed: 4 (80.0%)
+   ⚡ Avg ping: 168ms
+   🚀 Traffic passed: 2
+----------------------------------------
+📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-SNI-RU-all.txt
+   Total: 3
+   ✅ Ping passed: 3 (100.0%)
+   ⚡ Avg ping: 190ms
+   🚀 Traffic passed: 2
+----------------------------------------
+📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS.txt
+   Total: 18
+   ✅ Ping passed: 2 (11.1%)
+   ⚡ Avg ping: 368ms
+   🚀 Traffic passed: 2
+----------------------------------------
+📌 https://raw.githubusercontent.com/AvenCores/goida-vpn-configs/refs/heads/main/githubmirror/6.txt
+   Total: 2
+   ✅ Ping passed: 2 (100.0%)
+   ⚡ Avg ping: 180ms
    🚀 Traffic passed: 2
 ----------------------------------------
 📌 https://raw.githubusercontent.com/55prosek-lgtm/vpn_config_for_russia/refs/heads/main/blacklist.txt
    Total: 4
    ✅ Ping passed: 4 (100.0%)
-   ⚡ Avg ping: 161ms
+   ⚡ Avg ping: 170ms
    🚀 Traffic passed: 1
-----------------------------------------
-📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS.txt
-   Total: 22
-   ✅ Ping passed: 1 (4.5%)
-   ⚡ Avg ping: 136ms
-   🚀 Traffic passed: 0
 ----------------------------------------
 📌 https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Vless-Reality-White-Lists-Rus-Mobile-2.txt
    Total: 2
    ✅ Ping passed: 1 (50.0%)
-   ⚡ Avg ping: 140ms
+   ⚡ Avg ping: 184ms
    🚀 Traffic passed: 0
 ----------------------------------------
 
 ============================================================
 📈 ОБЩАЯ СТАТИСТИКА
 ============================================================
-Всего прокси: 1910
-✅ Прошли ping: 1052 (55.1%)
-🚀 Прошли трафик: 543
+Всего прокси: 2114
+✅ Прошли ping: 1267 (59.9%)
+🚀 Прошли трафик: 612
