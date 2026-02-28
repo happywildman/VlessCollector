@@ -170,8 +170,9 @@ class VlessProxy:
         """Вернуть строку для YAML файла (без source)"""
         return f"  - {self.raw_url}"
     
+    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ С ОБФУСКАЦИЕЙ =====
     def to_clash_config(self, name: str) -> Dict[str, Any]:
-        """Сгенерировать конфиг для Clash"""
+        """Сгенерировать конфиг для Clash (с обфускацией UDP)"""
         config = {
             "name": name,
             "type": "vless",
@@ -181,6 +182,10 @@ class VlessProxy:
             "network": self.network,
             "tls": self.security in ['tls', 'reality'],
             "udp": True,
+            # Добавляем обфускацию UDP для всех прокси
+            "xudp": True,
+            "udp-over-tcp": True,
+            "packet-encoding": "xudp",
         }
         
         if self.security in ['tls', 'reality'] and self.sni:
@@ -198,6 +203,7 @@ class VlessProxy:
             config["ws-opts"] = ws_opts
         
         return config
+    # =================================================
     
     def to_xray_config(self, local_port: int) -> Dict[str, Any]:
         """Сгенерировать конфиг для Xray"""
@@ -892,6 +898,15 @@ def step4_generate_clash(config: Config) -> List[str]:
         clash_lines.append(f"    network: {clash_config['network']}")
         clash_lines.append(f"    tls: {str(clash_config['tls']).lower()}")
         clash_lines.append(f"    udp: {str(clash_config['udp']).lower()}")
+        
+        # === ДОБАВЛЯЕМ ПАРАМЕТРЫ ОБФУСКАЦИИ ===
+        if 'xudp' in clash_config:
+            clash_lines.append(f"    xudp: {str(clash_config['xudp']).lower()}")
+        if 'udp-over-tcp' in clash_config:
+            clash_lines.append(f"    udp-over-tcp: {str(clash_config['udp-over-tcp']).lower()}")
+        if 'packet-encoding' in clash_config:
+            clash_lines.append(f"    packet-encoding: \"{clash_config['packet-encoding']}\"")
+        # ======================================
         
         if 'sni' in clash_config:
             clash_lines.append(f"    sni: \"{clash_config['sni']}\"")
