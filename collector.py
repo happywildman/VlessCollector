@@ -170,7 +170,6 @@ class VlessProxy:
         """Вернуть строку для YAML файла (без source)"""
         return f"  - {self.raw_url}"
     
-    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
     def to_clash_config(self, name: str) -> Dict[str, Any]:
         """Сгенерировать конфиг для Clash (поддерживает Reality и gRPC)"""
         config = {
@@ -223,7 +222,6 @@ class VlessProxy:
             config["grpc-opts"] = grpc_opts
         
         return config
-    # =================================
     
     def to_xray_config(self, local_port: int) -> Dict[str, Any]:
         """Сгенерировать конфиг для Xray"""
@@ -526,6 +524,37 @@ def clean_uuid(uuid: str) -> str:
 def clean_name(name: str) -> str:
     """Очистить имя от спецсимволов"""
     return re.sub(r'[^a-zA-Z0-9.-]', '', name)
+
+
+# === НОВАЯ ФУНКЦИЯ ФИЛЬТРАЦИИ ПРОКСИ ===
+def is_proxy_allowed(proxy: VlessProxy) -> bool:
+    """
+    Проверяет, удовлетворяет ли прокси критериям отбора:
+    - Порт только 443
+    - Только VLESS (уже выполняется)
+    - Только Reality, XHTTP, gRPC (WebSocket + TLS исключён)
+    - Для reality обязательно наличие flow и ключей
+    """
+    # 1. Проверка порта: оставляем только 443
+    if proxy.port != 443:
+        return False
+
+    # 2. Проверка транспорта и параметров безопасности
+    if proxy.security == "reality":
+        # Reality обязателен с flow xtls-rprx-vision и ключами
+        if proxy.flow == "xtls-rprx-vision" and proxy.pbk and proxy.sid:
+            return True
+        else:
+            # Reality без vision или без ключей не подходит
+            return False
+    
+    elif proxy.network in ["xhttp", "grpc"]:
+        # XHTTP и gRPC проходят (независимо от TLS)
+        return True
+    
+    else:
+        # Всё остальное (tcp, ws, ws+tls, и т.д.) отбрасываем
+        return False
 
 
 # === ФУНКЦИЯ ДЛЯ GEOIP С ПОДРОБНОЙ ОТЛАДКОЙ ===
@@ -852,6 +881,7 @@ def step4_generate_clash(config: Config) -> List[str]:
     # Статистика по доменам
     domain_count = 0
     resolved_count = 0
+    selected = 0
     
     for idx, line in enumerate(top_lines, 1):
         url = line.replace('  - ', '', 1)
@@ -859,6 +889,11 @@ def step4_generate_clash(config: Config) -> List[str]:
         
         if not proxy:
             continue
+        
+        # ===== ФИЛЬТРАЦИЯ ПО КРИТЕРИЯМ =====
+        if not is_proxy_allowed(proxy):
+            continue  # пропускаем неподходящие прокси
+        # ===================================
         
         key = f"{proxy.server}:{proxy.port}:{proxy.uuid}"
         if key in seen:
@@ -924,6 +959,7 @@ def step4_generate_clash(config: Config) -> List[str]:
                 clash_lines.append(f"        Host: \"{ws['headers']['Host']}\"")
         
         clash_lines.append("")
+        selected += 1
     
     with open(config.clash_file, 'w', encoding='utf-8') as f:
         f.write("proxies:\n")
@@ -937,7 +973,7 @@ def step4_generate_clash(config: Config) -> List[str]:
     print(f"all_proxies.yaml: {len(read_yaml_proxies(config.all_proxies_file))}")
     print(f"ping.yaml: {len(read_yaml_proxies(config.ping_file))}")
     print(f"traff.yaml: {len(read_yaml_proxies(config.traff_file))}")
-    print(f"clash.yaml: {proxies_count} TOP {config.top_count}")
+    print(f"clash.yaml: {proxies_count} TOP {config.top_count} (filtered from {selected})")
     
     # Вывод статистики по доменам
     if domain_count > 0:
