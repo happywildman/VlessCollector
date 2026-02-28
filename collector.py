@@ -170,7 +170,7 @@ class VlessProxy:
         """Вернуть строку для YAML файла (без source)"""
         return f"  - {self.raw_url}"
     
-    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ CLASH КОНФИГА =====
+    # ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ =====
     def to_clash_config(self, name: str) -> Dict[str, Any]:
         """Сгенерировать конфиг для Clash (поддерживает Reality и gRPC)"""
         config = {
@@ -194,14 +194,12 @@ class VlessProxy:
         
         # ДЛЯ REALITY - добавляем специальные параметры
         if self.security == "reality":
-            reality_opts = {}
             if self.pbk:
-                reality_opts["public-key"] = self.pbk
+                config["public-key"] = self.pbk
             if self.sid:
-                reality_opts["short-id"] = self.sid
-            config["reality-opts"] = reality_opts
+                config["short-id"] = self.sid
         
-        # Добавляем fingerprint (важно для Reality и TLS)
+        # Добавляем fingerprint
         if self.fp and self.fp != "chrome":
             config["client-fingerprint"] = self.fp
         
@@ -225,7 +223,7 @@ class VlessProxy:
             config["grpc-opts"] = grpc_opts
         
         return config
-    # ==================================================
+    # =================================
     
     def to_xray_config(self, local_port: int) -> Dict[str, Any]:
         """Сгенерировать конфиг для Xray"""
@@ -795,7 +793,7 @@ def step3_traffic_test(config: Config, source_stats: Dict[str, SourceStats], url
                 test_proxy_with_xray, 
                 proxy, 
                 config.xray_bin, 
-                config.test_urls,
+                config.test_urls,  # ← теперь передаём список URL
                 config.xray_timeout,
                 config.xray_start_timeout
             ): (idx, proxy, line)
@@ -899,16 +897,22 @@ def step4_generate_clash(config: Config) -> List[str]:
         if 'flow' in clash_config:
             clash_lines.append(f"    flow: \"{clash_config['flow']}\"")
         
-        if 'reality-opts' in clash_config:
-            clash_lines.append(f"    reality-opts:")
-            ro = clash_config['reality-opts']
-            if 'public-key' in ro:
-                clash_lines.append(f"      public-key: \"{ro['public-key']}\"")
-            if 'short-id' in ro:
-                clash_lines.append(f"      short-id: \"{ro['short-id']}\"")
+        # === ДОБАВЛЕННЫЕ СТРОКИ ДЛЯ REALITY И gRPC ===
+        if 'public-key' in clash_config:
+            clash_lines.append(f"    public-key: \"{clash_config['public-key']}\"")
+        
+        if 'short-id' in clash_config:
+            clash_lines.append(f"    short-id: \"{clash_config['short-id']}\"")
         
         if 'client-fingerprint' in clash_config:
             clash_lines.append(f"    client-fingerprint: {clash_config['client-fingerprint']}")
+        
+        if 'grpc-opts' in clash_config:
+            clash_lines.append(f"    grpc-opts:")
+            grpc = clash_config['grpc-opts']
+            if 'grpc-service-name' in grpc:
+                clash_lines.append(f"      grpc-service-name: \"{grpc['grpc-service-name']}\"")
+        # ==============================================
         
         if 'ws-opts' in clash_config:
             clash_lines.append(f"    ws-opts:")
@@ -918,12 +922,6 @@ def step4_generate_clash(config: Config) -> List[str]:
             if 'headers' in ws and 'Host' in ws['headers']:
                 clash_lines.append(f"      headers:")
                 clash_lines.append(f"        Host: \"{ws['headers']['Host']}\"")
-        
-        if 'grpc-opts' in clash_config:
-            clash_lines.append(f"    grpc-opts:")
-            grpc = clash_config['grpc-opts']
-            if 'grpc-service-name' in grpc:
-                clash_lines.append(f"      grpc-service-name: \"{grpc['grpc-service-name']}\"")
         
         clash_lines.append("")
     
